@@ -12,18 +12,22 @@ double predict(double m, double b, double x) {
     return m * x + b;
 }
 
+double sigmoid(double m, double b, double x) {
+    return 1 / (1 + exp(-1 * predict(m, b, x)));
+}
+
 double error(double m, double b,  vector<pair<double,double>> data) {
     double totalError = 0;
     for (auto& point : data) {
         double x = point.first;
         double y = point.second;
-        totalError += pow((y - (m * x + b)), 2);
+        totalError += -1 * (y * log(sigmoid(m, b, x)) + (1-y) * log(1 - sigmoid(m,b,x)));
     }
     return totalError / data.size();
 }
 
 double error_point(double m, double b, double x, double y) {
-    return pow((y - (m * x + b)), 2);;
+    return -1 * (y * log(sigmoid(m, b, x)) + (1-y) * log(1 - sigmoid(m,b,x)));
 }
 
 double partialM_numerical(double m, double b,  vector<pair<double,double>> data) {
