@@ -8,7 +8,7 @@ using namespace std;
 // double m = 2;
 // double b = 2;
 
-double predict(double m, double b, double x) {
+double predict_linear(double m, double b, double x) {
     return m * x + b;
 }
 
@@ -103,7 +103,7 @@ pair<double, double> minimize_err_display(double m, double b, vector<pair<double
 }
 
 void printPredic(double m, double b, vector<pair<double,double>> data, double x) {
-    cout << "at x = " << x << ", prediction is " << predict(m, b, x) << endl;
+    cout << "at x = " << x << ", prediction is " << predict_linear(m, b, x) << endl;
     
     cout << "err = " << error(m, b, data) << endl;
 }
@@ -126,6 +126,6 @@ int main() {
 
     pair<double, double> res = minimize_err_display(m, b, data);
     cout << "m = " << res.first << ", b = " << res.second << endl;
-    cout << "prediction at x = 3 is " << predict(res.first, res.second, 3) 
+    cout << "prediction at x = 3 is " << predict_linear(res.first, res.second, 3) 
     << " actual value is " << "unavailable" <<  endl;
 }
