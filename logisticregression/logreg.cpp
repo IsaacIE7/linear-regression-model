@@ -8,26 +8,30 @@ using namespace std;
 // double m = 2;
 // double b = 2;
 
-double predict(double m, double b, double x) {
-    return m * x + b;
+double predict(vector<double> weights, double b, double x) {
+    double total = 0;
+    for (double m: weights) {
+            total += m * x;
+    }
+    return total + b;
 }
 
-double sigmoid(double m, double b, double x) {
-    return 1 / (1 + exp(-1 * predict(m, b, x)));
+double sigmoid(vector<double> weights, double b, double x) {
+    return 1 / (1 + exp(-1 * predict(weights, b, x)));
 }
 
-double error(double m, double b,  vector<pair<double,double>> data) {
+double error(vector<double> weights, double b,  vector<pair<double,double>> data) {
     double totalError = 0;
     for (auto& point : data) {
         double x = point.first;
         double y = point.second;
-        totalError += -1 * (y * log(sigmoid(m, b, x)) + (1-y) * log(1 - sigmoid(m,b,x)));
+        totalError += -1 * (y * log(sigmoid(weights, b, x)) + (1-y) * log(1 - sigmoid(weights,b,x)));
     }
     return totalError / data.size();
 }
 
-double error_point(double m, double b, double x, double y) {
-    return -1 * (y * log(sigmoid(m, b, x)) + (1-y) * log(1 - sigmoid(m,b,x)));
+double error_point(vector<double> weights, double b, double x, double y) {
+    return -1 * (y * log(sigmoid(weights, b, x)) + (1-y) * log(1 - sigmoid(weights ,b,x)));
 }
 
 double partialM_numerical(double m, double b,  vector<pair<double,double>> data) {
