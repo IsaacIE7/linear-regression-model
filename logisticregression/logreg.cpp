@@ -9,38 +9,33 @@ using namespace std;
 // double b = 2;
 
 
-double predict_point(vector<double> weights, double b, vector<pair<vector<double>, double>> data, int index) {
+double compute_z(vector<double> weights, double b, vector<double> features) {
+    if (weights.size() != features.size()) {
+    throw invalid_argument("weights and features must match in size");
+    }
     double total = 0;
     int i = 0;
-    for (double m: weights) {
-        total += m * (data[i].first[i]);
+    for (double w: weights) {
+        total += w * (features[i]);
         i++;
     }
     return total + b;
 }
 
-double predict(vector<double> weights, double b, vector<pair<vector<double>, double>> data) {
-    double total = 0;
-    int i = 0;
-    for (double m: weights) {
-        total += m * (data[i].first[i]);
-        i++;
-    }
-    return total + b;
+double sigmoid(vector<double> weights, double b, vector<double> features) {
+    return 1 / (1 + exp(-1 * compute_z(weights, b, features)));
+}
+double predict(vector<double> weights, double b, vector<double> features) {
+    return sigmoid(weights, b, features) >= 0.5 ? 1 : 0;
 }
 
-double sigmoid(vector<double> weights, double b, vector<pair<vector<double>, double>> data) {
-    return 1 / (1 + exp(-1 * predict(weights, b, data)));
-}
 
-double error(vector<double> weights, double b,  vector<pair<vector<double>, double>> data) {
+double error(vector<double> weights, double b,  vector<pair<vector<double>, double>> &data) {
     double totalError = 0;
-    int i = 0;
     for (auto& point : data) {
-        double x = point.first[i];
+        vector<double> features = point.first;
         double y = point.second;
-        totalError += -1 * (y * log(sigmoid(weights, b, data)) + (1-y) * log(1 - sigmoid(weights,b,data)));
-        i++;
+        totalError += -1 * (y * log(sigmoid(weights, b, features)) + (1-y) * log(1 - sigmoid(weights,b,features)));
     }
     return totalError / data.size();
 }
@@ -49,7 +44,7 @@ double error(vector<double> weights, double b,  vector<pair<vector<double>, doub
 //     return -1 * (y * log(sigmoid(weights, b, x)) + (1-y) * log(1 - sigmoid(weights ,b,x)));
 // }
 
-vector<double> partial_numerical(vector<double> weights, double b, vector<pair<vector<double>, double>> data) {
+vector<double> partial_numerical(vector<double> weights, double b, vector<pair<vector<double>, double>> &data) {
     double dm = 0.00001;
     vector<double> partials;
     for (double m: weights) {
@@ -58,39 +53,32 @@ vector<double> partial_numerical(vector<double> weights, double b, vector<pair<v
     return partials; 
 } 
 
-// double partialM_numerical(double m, double b,  vector<pair<double,double>> data) {
-//     double dm = 0.00001;
-//     return (error(m + dm, b, data) - error(m, b, data)) / dm; 
-// } 
+vector<double> partial(vector<double> weights, double b,  vector<pair<vector<double>, double>> &data) {
+    int n = weights.size();
+    vector<double> gradient(weights.size());
+    double total;
+    total = 0;
+        
 
-// double partialM(double m, double b,  vector<pair<double,double>> data) {
-//     double totalError = 0;
-//     for (auto& point : data) {
-//         double x = point.first;
-//         double y = point.second;
-//         totalError += 2 * (y - (m * x + b)) * (-x);
-//     }
-//     return totalError / data.size(); 
-// } 
-
-vector<double> partial(vector<double> weights, double b,  vector<pair<vector<double>, double>> data) {
-    double totalError = 0;
-    vector<double> partials;
-    for (int i = 0; i < data.size(); i++) {
-        auto point = data[i];
-        vector<double> pointVars = data[i].first;
-        double y = data[i].second;
-        double x;
-        for (int j = 0; j < pointVars.size(); j++) {
-            x = pointVars[j];
-            totalError += 2 * (y - (predict(weights, b, data))) * (-x);
+    for (auto point: data) {
+        auto features = point.first;
+        double y = point.second;
+        double p = sigmoid(weights, b, features);
+             
+        for (int i = 0; i < weights.size(); i++) { 
+            double xi = features[i];
+            gradient[i] += (p - y) * xi;
         }
-        partials.push_back(totalError / data.size());
     }
-    return partials; 
+
+    for (int i = 0; i < weights.size(); i++) {
+        gradient[i] /= data.size();
+    }
+
+    return gradient; 
 }
 
-double sum_partials(vector<double> weights, double b,  vector<pair<vector<double>, double>> data) {
+double sum_partials(vector<double> weights, double b,  vector<pair<vector<double>, double>> &data) {
     double tot = 0;
     vector<double> partials = partial(weights, b, data);
     for (double p: partials) {
@@ -99,30 +87,18 @@ double sum_partials(vector<double> weights, double b,  vector<pair<vector<double
     return tot;
 }
 
-// double partialB_numerical(vector<double> weights, double b,  vector<pair<double,double>> data) {
-//     double db = 0.00001;
-//     return (error(weights, b + db, data) - error(weights, b, data)) / db; 
-// } 
-
-double partialB(vector<double> weights, double b,  vector<pair<vector<double>, double>> data) {
-    double totalError = 0;
-    for (int i = 0; i < data.size(); i++) {
-        auto point = data[i];
-        vector<double> pointVars = data[i].first;
-        double y = data[i].second;
-        double x;
-        for (int j = 0; j < pointVars.size(); j++) {
-            x = pointVars[j];
-            totalError += 2 * (y - (predict(weights, b, data))) * (-1);
-        }
+double partialB(vector<double> weights, double b,  vector<pair<vector<double>, double>> &data) {
+    double total = 0;
+    for (auto point: data) {
+        auto features = point.first;
+        double y = point.second;
+        total += (sigmoid(weights, b, features) - y);
     }
-    return totalError / data.size(); 
-} 
+    return total/data.size(); 
+}
 
 
-// Old minimize_err function (commented out - using the one below with loss tracking instead)
-
-pair<vector<double>, double> minimize_err(vector<double> weights, double b, vector<pair<vector<double>, double>> data){
+pair<vector<double>, double> train(vector<double> weights, double b, vector<pair<vector<double>, double>> data){
     vector<double> weightsP = weights;
     vector<double> partialsM = partial(weights, b, data);
     double parB = partialB(weights, b, data);
@@ -130,32 +106,29 @@ pair<vector<double>, double> minimize_err(vector<double> weights, double b, vect
    
 
     int i = 0;
-    while (error(weightsP, bp, data) > 0.001) {
-        partialsM = partial(weightsP, b, data);
+    while (error(weightsP, bp, data) > 0.1) {
+        partialsM = partial(weightsP, bp, data);
         parB = partialB(weightsP, bp, data);
 
-        if (abs(parB) + sum_partials(weightsP, b, data) < 1e-5) break;
+        if (abs(parB) + sum_partials(weightsP, bp, data) < 0.01) break;
 
 
-        int* j = new int(0);
+        int j = 0;
         for (double& mp: weightsP) {
-            mp -= (0.001  * partialsM[*j]);
+            mp -= (0.001  * partialsM[j]);
             j++;
         }
-        delete j;
 
         bp -= (0.001  * parB);
         i++;
     }
 
-    return {partialsM, bp};
+    return {weightsP, bp};
 }
 
 
 
-
-
-pair<vector<double>, double> minimize_err_display(vector<double> weights, double b, vector<pair<vector<double>, double>> data){
+pair<vector<double>, double> train_display(vector<double> weights, double b, vector<pair<vector<double>, double>> data){
     vector<double> weightsP = weights;
     vector<double> partialsM = partial(weights, b, data);
     double parB = partialB(weights, b, data);
@@ -163,27 +136,26 @@ pair<vector<double>, double> minimize_err_display(vector<double> weights, double
    
 
     int i = 0;
-    while (error(weightsP, bp, data) > 0.01) {
-        partialsM = partial(weightsP, b, data);
+    while (error(weightsP, bp, data) > 0.1) {
+        partialsM = partial(weightsP, bp, data);
         parB = partialB(weightsP, bp, data);
 
-        if (i % 100000 == 0) cout << "Loss: " << error(weightsP, bp, data) << endl;
+        if (i % 250000 == 0) cout << "Loss: " << error(weightsP, bp, data) << "\n";
 
-        if (abs(parB) + sum_partials(weightsP, b, data) < 1e-5) break;
+        if (abs(parB) + sum_partials(weightsP, bp, data) < 0.01) break;
 
 
-        int* j = new int(0);
+        int j = 0;
         for (double& mp: weightsP) {
-            mp -= (0.001  * partialsM[*j]);
+            mp -= (0.001  * partialsM[j]);
             j++;
         }
-        delete j;
 
         bp -= (0.001  * parB);
         i++;
     }
 
-    return {partialsM, bp};
+    return {weightsP, bp};
 }
 
 void printPredic(vector<double> weights, double b, vector<pair<vector<double>, double>> data, vector<double> features) {
@@ -192,9 +164,6 @@ void printPredic(vector<double> weights, double b, vector<pair<vector<double>, d
     cout << "Features: ";
     for (double f : features) cout << f << " ";
     cout << endl;
-    cout << "Prediction: " << predict(weights, b, tempData) << endl;
-    cout << "Sigmoid output: " << sigmoid(weights, b, tempData) << endl;
-    cout << "Error on full dataset: " << error(weights, b, data) << endl;
 }
 
 
@@ -237,11 +206,12 @@ int main() {
     double b = 0.0;
 
     cout << "Initial error: " << error(weights, b, data) << endl;
-    cout << "Initial sigmoid: " << sigmoid(weights, b, data) << endl;
+    cout << "Initial sigmoid: " << sigmoid(weights, b, {1, 2}) << endl;
 
     // Train the model
-    pair<vector<double>, double> res = minimize_err(weights, b, data);
+    pair<vector<double>, double> res = train_display(weights, b, data);
     
     cout << "Final bias: " << res.second << endl;
     cout << "Final error: " << error(res.first, res.second, data) << endl;
+    cout << "Final sigmoid: " << predict(res.first, res.second, {1, 2}) << endl;
 }
