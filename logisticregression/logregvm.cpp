@@ -195,21 +195,14 @@ Mat Vec::to_matrix() const {
 }
 
 Vec compute_z(const Vec& weights, double b, const Mat& X) {
-    cout << "in compute_z_mat" << endl;
-    cout << "X rows = " << X.rows << endl;
-    cout << "X cols = " << X.cols << endl;
-    cout << "weights dim = " << weights.dim << endl;
     Vec v = X * weights;
-
-        cout << "v dim = " << v.dim << endl;
     Vec bias(v.dim, b);
     if (v.dim != bias.dim) throw invalid_argument("weights vector and bias vector mismatch");
     return v + bias;
 }
 
 double compute_z(const Vec& weights, const double& b, const Vec& x) {
-    cout << "in compute_z_vector" << endl;
-    return (weights.transpose() * x).comps[0] + b;
+        return (weights.transpose() * x).comps[0] + b;
 }
 
 Vec sigmoid(Vec z) {
@@ -240,7 +233,6 @@ Vec sigmoid_binary(const Vec& sig) {
 }
 
 double error(const Vec& p, const Vec& y) {
-    cout << "in error" << endl;
     if (p.dim != y.dim) throw invalid_argument("vector dim mismatch");
     Vec v1 = y.transpose() * p.log_element_wise();
     Vec v2 = ((y.add_element_wise(-1)) * (-1.0)).transpose() * ((p.add_element_wise(-1) * (-1.0)).log_element_wise());
@@ -254,7 +246,6 @@ double error(const Vec& p, const Vec& y) {
 }
 
 Vec gradient(Vec& p, const Vec& y, const Mat& X) {
-    cout << "in gradient" << endl;
     Mat Xt = X.transpose();
     
     Vec grad = Xt * (p - y);
@@ -336,9 +327,8 @@ pair<Vec, double> train_display(const Vec weights, double b, const Vec& y, const
 }
 
 
-int predict_print(const Vec& weights, double b, const Vec& features) {
+int predict(const Vec& weights, double b, const Vec& features) {
     int res = sigmoid_binary(compute_z(weights, b, features));
-    cout << res << endl;
     return res;
 }
 
@@ -365,7 +355,13 @@ int main() {
     Vec finalWeights = res.first;
     double finalB = res.second;
 
-    predict_print(finalWeights, finalB, Vec({1.0, 2.0})); // Should be close to 0
+    for (double w: finalWeights.comps) {
+        cout << "w: " << w << endl;
+    }
+    cout << "bias: " << finalB << endl;
+
+    cout << "prediction: " << predict(finalWeights, finalB, Vec({1.0, 2.0})) << endl 
+    << predict(finalWeights, finalB, Vec({3.5, 2.5})) << endl;
     
 
 
