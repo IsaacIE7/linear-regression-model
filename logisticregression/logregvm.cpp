@@ -53,7 +53,7 @@ struct Vec {
         Vec res(dim);
         if (v.dim != dim) throw invalid_argument("dimension mismatch");
         for (int i = 0; i < dim; i++) {
-            res[i] = v[i] - (*this)[i]; // deference this ptr
+            res[i] = (*this)[i] - v[i]; // deference this ptr
         }
         return res;
     }
@@ -107,21 +107,21 @@ struct Mat {
     pair<int, int> dim;
 
     Mat(int rows, int cols): //all entries 0 m x n matrix
-    rows(rows), cols(cols),
+    entries(rows, vector<double> (cols ,0)), // to initialize vector without naming, vector<type>(size, value)
     dim({rows, cols}),
-    entries(rows, vector<double> (cols ,0)) // to initialize vector without naming, vector<type>(size, value)
+    rows(rows), cols(cols)
     {}
 
     Mat(vector<vector<double>> entries): // create matrix with initialized values
     entries(entries), 
     dim({entries.size(), entries[0].size()}),
-    rows(dim.first),
-    cols(dim.second)
+    rows(entries.size()),
+    cols(entries[0].size())
     {}
 
 
     Vec mat_mul(const Vec& v) const {
-        vector<double> vals(cols, 0);
+        vector<double> vals(rows, 0);
         Vec res(vals); 
         if (dim.second != v.dim) throw invalid_argument("matrix vector dimension mismatch");
         for (int i = 0; i < entries.size(); i++) {
@@ -194,11 +194,21 @@ Mat Vec::to_matrix() const {
     return m;
 }
 
-Vec compute_z(const Vec& weights, const Vec& b, const Mat& X) {
-    return (X * weights) + b;
+Vec compute_z(const Vec& weights, double b, const Mat& X) {
+    cout << "in compute_z_mat" << endl;
+    cout << "X rows = " << X.rows << endl;
+    cout << "X cols = " << X.cols << endl;
+    cout << "weights dim = " << weights.dim << endl;
+    Vec v = X * weights;
+
+        cout << "v dim = " << v.dim << endl;
+    Vec bias(v.dim, b);
+    if (v.dim != bias.dim) throw invalid_argument("weights vector and bias vector mismatch");
+    return v + bias;
 }
 
 double compute_z(const Vec& weights, const double& b, const Vec& x) {
+    cout << "in compute_z_vector" << endl;
     return (weights.transpose() * x).comps[0] + b;
 }
 
@@ -230,9 +240,10 @@ Vec sigmoid_binary(const Vec& sig) {
 }
 
 double error(const Vec& p, const Vec& y) {
+    cout << "in error" << endl;
     if (p.dim != y.dim) throw invalid_argument("vector dim mismatch");
-    Vec v1 = y * p.log_element_wise();
-    Vec v2 = ((y.add_element_wise(-1)) * (-1.0)) * ((p.add_element_wise(-1) * (-1.0)).log_element_wise());
+    Vec v1 = y.transpose() * p.log_element_wise();
+    Vec v2 = ((y.add_element_wise(-1)) * (-1.0)).transpose() * ((p.add_element_wise(-1) * (-1.0)).log_element_wise());
     Vec res = v1 + v2;
 
     double err = 0;
@@ -243,10 +254,11 @@ double error(const Vec& p, const Vec& y) {
 }
 
 Vec gradient(Vec& p, const Vec& y, const Mat& X) {
+    cout << "in gradient" << endl;
     Mat Xt = X.transpose();
     
     Vec grad = Xt * (p - y);
-    return grad * (1/p.dim); 
+    return grad * (1.0/p.dim); 
 } 
 
 double sum_partials(const Vec& gradient) {
@@ -258,7 +270,7 @@ double sum_partials(const Vec& gradient) {
 }
 
 double partialB(Vec& p, const Vec& y) {
-    return (Vec(p.dim, 1).transpose() * (p - y)).comps[0] * 1/p.dim;
+    return (Vec(p.dim, 1).transpose() * (p - y)).comps[0] * 1.0/p.dim;
 }
 
 
@@ -324,12 +336,14 @@ pair<Vec, double> train_display(const Vec weights, double b, const Vec& y, const
 }
 
 
-void predict_print(const Vec& weights, double b, const Vec& features) {
-    cout << sigmoid_binary(sigmoid(compute_z(weights, b, features))) << endl;
+int predict_print(const Vec& weights, double b, const Vec& features) {
+    int res = sigmoid_binary(compute_z(weights, b, features));
+    cout << res << endl;
+    return res;
 }
 
 int main() {
-
+    cout << "starting" << endl;
     // Test data with 2 features per sample
     vector<vector<double>> rawX = {
         {1.0, 2.0},
@@ -343,25 +357,17 @@ int main() {
     Mat X(rawX);
     Vec y(rawY);
     Vec weights({0.1, 0.1});
-    double b = 0.0;
+    double bias = 0;
 
-    Vec initialZ = compute_z(weights, b, X);
-    Vec initialP = sigmoid(initialZ);
-    cout << "Initial loss: " << error(initialP, y) << endl;
+    cout << "before training: " << endl;
 
-    pair<Vec, double> res = train_display(weights, b, y, X);
-    cout << "Final bias: " << res.second << endl;
+    pair<Vec, double> res = train_display(weights, bias, y, X);
+    Vec finalWeights = res.first;
+    double finalB = res.second;
 
-    Vec finalZ = compute_z(res.first, res.second, X);
-    Vec finalP = sigmoid(finalZ);
-    cout << "Final loss: " << error(finalP, y) << endl;
+    predict_print(finalWeights, finalB, Vec({1.0, 2.0})); // Should be close to 0
+    
 
-    Vec sample({1.0, 2.0});
-    double sampleProbability = sigmoid(compute_z(res.first, res.second, sample));
-    int samplePrediction = sampleProbability >= 0.5 ? 1 : 0;
-    cout << "Sample features: {1.0, 2.0}" << endl;
-    cout << "Predicted probability: " << sampleProbability << endl;
-    cout << "Predicted label: " << samplePrediction << endl;
 
     return 0;
 }
