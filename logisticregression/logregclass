@@ -194,43 +194,66 @@ Mat Vec::to_matrix() const {
     return m;
 }
 
-Vec compute_z(const Vec& weights, double b, const Mat& X) {
-    Vec v = X * weights;
-    Vec bias(v.dim, b);
-    if (v.dim != bias.dim) throw invalid_argument("weights vector and bias vector mismatch");
-    return v + bias;
-}
 
-double compute_z(const Vec& weights, const double& b, const Vec& x) {
+struct model {
+    Vec weights;
+    double bias;
+    Mat data;
+    Vec dataVals;
+
+
+
+    model(Vec weights, double bias, Mat data, Vec dataVals):
+    weights(weights),
+    bias(bias),
+    data(data),
+    dataVals(dataVals) 
+    {}
+
+    Vec compute_z(const Vec& weights, double b, const Mat& X) {
+        Vec v = X * weights;
+        Vec bias(v.dim, b);
+        if (v.dim != bias.dim) throw invalid_argument("weights vector and bias vector mismatch");
+        return v + bias;
+    }
+
+    double compute_z(const Vec& weights, const double& b, const Vec& x) {
         return (weights.transpose() * x).comps[0] + b;
-}
-
-Vec sigmoid(Vec z) {
-    Vec res(z.dim, 0);
-    int i = 0;
-    for (double a: z.comps) {
-        res[i] = 1 / (1 + exp(a * -1));
-        i++;
     }
-    return res;
-}
 
-double sigmoid(double z) {
-    return 1 / (1 + exp(-z));
-}
-
-double sigmoid_binary(double z) {
-    return sigmoid(z) >= 0.5 ? 1.0 : 0.0;
-}
-
-Vec sigmoid_binary(const Vec& sig) {
-    Vec res(sig.dim, 0);
-    int i = 0;
-    for (double a: sig.comps) {
-        (a >= 0.5) ? res[i] = 1 : res[i] =  0;
+    Vec sigmoid(Vec z) {
+        Vec res(z.dim, 0);
+        int i = 0;
+        for (double a: z.comps) {
+            res[i] = 1 / (1 + exp(a * -1));
+            i++;
+        }
+        return res;
     }
-    return res;
-}
+
+    double sigmoid(double z) {
+        return 1 / (1 + exp(-z));
+    }
+
+    double sigmoid_binary(double z) {
+        return sigmoid(z) >= 0.5 ? 1.0 : 0.0;
+    }
+
+    Vec sigmoid_binary(const Vec& sig) {
+        Vec res(sig.dim, 0);
+        int i = 0;
+        for (double a: sig.comps) {
+            (a >= 0.5) ? res[i] = 1 : res[i] =  0;
+        }
+        return res;
+    }
+
+    
+};
+
+
+
+
 
 double error(const Vec& p, const Vec& y) {
     if (p.dim != y.dim) throw invalid_argument("vector dim mismatch");
