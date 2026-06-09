@@ -99,6 +99,23 @@ struct Vec {
         }
         return res;
     }
+
+    Vec mul_element_wise(const Vec& v) const {
+        Vec res(dim);
+        if (v.dim != dim) throw invalid_argument("dimension mismatch");
+        for (int i = 0; i < dim; i++) {
+            res[i] = (*this)[i] * v[i];
+        }
+        return res;
+    }
+
+    Vec sigmoid_element_wise() const {
+        Vec res(dim);
+        for (int i = 0; i < dim; i++) {
+            res[i] = 1 / (1 + exp(-(*this)[i]));
+        }
+        return res;
+    }
 };
 
 struct Mat {
@@ -139,6 +156,71 @@ struct Mat {
         return mat_mul(v);
     }
 
+    Mat operator+(Mat m) const {
+        if (dim != m.dim) throw invalid_argument("matrix dimension mismatch");
+        vector<vector<double>> vals(rows, vector<double>(cols, 0));
+        Mat res(vals);
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                res.entries[i][j] = entries[i][j] + m.entries[i][j];
+            }
+        }
+        return res;
+    }
+
+    Mat operator-(Mat m) const {
+        if (dim != m.dim) throw invalid_argument("matrix dimension mismatch");
+        vector<vector<double>> vals(rows, vector<double>(cols, 0));
+        Mat res(vals);
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                res.entries[i][j] = entries[i][j] - m.entries[i][j];
+            }
+        }
+        return res;
+    }
+
+    Mat operator*(double c) const {
+        vector<vector<double>> vals(rows, vector<double>(cols, 0));
+        Mat res(vals);
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                res.entries[i][j] = c * entries[i][j];
+            }
+        }
+        return res;
+    }
+
+    Vec row_vec(int row) const {
+        if (row < 0 || row >= rows) throw out_of_range("row index out of bounds");
+        vector<double> vals(cols);
+        for (int j = 0; j < cols; j++) {
+            vals[j] = entries[row][j];
+        }
+        return Vec(vals);
+    }
+
+    Vec col_vec(int col) const {
+        if (col < 0 || col >= cols) throw out_of_range("column index out of bounds");
+        vector<double> vals(rows);
+        for (int i = 0; i < rows; i++) {
+            vals[i] = entries[i][col];
+        }
+        return Vec(vals);
+    }
+
+    Mat operator*(const Mat& m) {
+        Mat res(m.rows, m.cols);
+        for (int j = 0; j < cols; j++) {
+            for (int i = 0; i < rows; i++) {
+                res.entries[i][j] = 
+
+            }
+        }
+        return res;
+    }
+
+
     Mat transpose () const { //lets compiler know that original Mat isnt edited
         Mat res(cols, rows);
 
@@ -159,23 +241,7 @@ struct Mat {
         return Vec(vals);
     }
 
-    Vec row_vec(int row) const {
-        if (row < 0 || row >= rows) throw out_of_range("row index out of bounds");
-        vector<double> vals(cols);
-        for (int j = 0; j < cols; j++) {
-            vals[j] = entries[row][j];
-        }
-        return Vec(vals);
-    }
-
-    Vec col_vec(int col) const {
-        if (col < 0 || col >= cols) throw out_of_range("column index out of bounds");
-        vector<double> vals(rows);
-        for (int i = 0; i < rows; i++) {
-            vals[i] = entries[i][col];
-        }
-        return Vec(vals);
-    }
+    
 };
 
 // Define Mat-returning Vec methods only after Mat is fully declared.
@@ -360,46 +426,13 @@ int main() {
 
     m.train(y, X);
 
-    cout << "\n=== MODEL PARAMETERS ===\n";
+    cout << "finished training" << endl;
 
-cout << "Weights: ";
-for (double w : m.weights.comps) {
-    cout << w << " ";
-}
-cout << "\nBias: " << m.bias << "\n";
+    Vec z = m.compute_z(X);
+    Vec p = m.sigmoid(z);
 
-cout << "\n=== TRAINING SET EVALUATION ===\n";
-
-for (int i = 0; i < X.rows; i++) {
-    Vec x = X.row_vec(i);
-
-    double z = m.compute_z(x);
-    double prob = Model::sigmoid(z);
-    int pred = Model::sigmoid_binary(z);
-
-    cout << "\nExample " << i + 1 << ":\n";
-
-    cout << "Features: ";
-    for (double v : x.comps) {
-        cout << v << " ";
-    }
-
-    cout << "\nActual: " << y[i];
-    cout << "\nProbability: " << prob;
-    cout << "\nPrediction: " << pred << "\n";
-}
-
-cout << "\nFinal Loss: "
-     << m.error(Model::sigmoid(m.compute_z(X)), y)
-     << "\n";
-
-    // cout << "finished training" << endl;
-
-    // Vec z = m.compute_z(X);
-    // Vec p = m.sigmoid(z);
-
-    // cout << "loss: " << m.error(p, y) << endl;
-    // cout << "prediction: " << m.predict(Vec({4.0, 5.0})) << endl;
+    cout << "loss: " << m.error(p, y) << endl;
+    cout << "prediction: " << m.predict(Vec({4.0, 5.0})) << endl;
 
     return 0;
 }
