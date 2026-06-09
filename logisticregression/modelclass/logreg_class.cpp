@@ -210,11 +210,11 @@ struct Mat {
     }
 
     Mat operator*(const Mat& m) {
+        if (cols != m.rows) throw invalid_argument("matrix dimension incompatibility");
         Mat res(m.rows, m.cols);
-        for (int j = 0; j < cols; j++) {
+        for (int j = 0; j < m.cols; j++) {
             for (int i = 0; i < rows; i++) {
-                res.entries[i][j] = 
-
+                res.entries[i][j] = (*this).row_vec(i) * m.col_vec(j);
             }
         }
         return res;
