@@ -265,6 +265,9 @@ struct Layer {
     Mat weights;
     Vec bias;
 
+    int neurons;
+    int weightAmnt;
+
     Layer(int neurons, int weightAmnt): // layer with n neurons and k weights, weights and biases init to 0
         weights(Mat(neurons, weightAmnt)), 
         bias(neurons, 0) {}
@@ -273,12 +276,10 @@ struct Layer {
         weights(weights),
         bias(bias) {}
 
-    Vec forward(const Vec& inputs) {
+    pair<Vec, Vec> forward(const Vec& inputs) {
         Vec z = (weights * inputs) + bias;
         Vec p = z.sigmoid_element_wise();
-        zValues.push_back(z);
-        activations.push_back(p);
-        return p;
+        return {z, p};
     }
 };
 
@@ -289,6 +290,7 @@ struct NeuralNet {
 
     vector<Vec> activations;
     vector<Vec> zValues;
+    vector<Vec> inputs;
 
     NeuralNet(vector<int> layout):
     layout(layout)
@@ -297,6 +299,26 @@ struct NeuralNet {
             layers.push_back(Layer(layout[i], layout[i - 1]));
         }
     }
+
+    Vec forward(const Vec& input) {
+        inputs.push_back(input);
+
+        for (int i = 0; i < layers.size(); i++) {
+            auto pair = layers[i].forward(activations[i]);
+            activations.push_back(pair.second);
+            zValues.push_back(pair.second);        
+        }
+        return activations.back();
+    }
+
+    Vec loss_layer(int layerNum) {
+        Vec v1 = y.transpose() * p.log_element_wise();
+        Vec v2 = ((y.add_element_wise(-1)) * (-1.0)).transpose() * ((p.add_element_wise(-1) * (-1.0)).log_element_wise());
+        Vec res = v1 + v2;
+        return;
+    }
+
+
 };
 
 int main(){
