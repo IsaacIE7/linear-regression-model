@@ -303,19 +303,24 @@ struct NeuralNet {
     Vec forward(const Vec& input) {
         inputs.push_back(input);
 
-        for (int i = 0; i < layers.size(); i++) {
+        for (int i = 1; i < layers.size(); i++) {
             auto pair = layers[i].forward(activations[i]);
             activations.push_back(pair.second);
-            zValues.push_back(pair.second);        
+            zValues.push_back(pair.second);   
+            inputs.push_back(pair.second);    
         }
         return activations.back();
     }
 
     Vec loss_layer(int layerNum) {
+        Vec p = activations[layerNum - 1];
+        Vec y = inputs[layerNum - 1];
+
         Vec v1 = y.transpose() * p.log_element_wise();
         Vec v2 = ((y.add_element_wise(-1)) * (-1.0)).transpose() * ((p.add_element_wise(-1) * (-1.0)).log_element_wise());
+        
         Vec res = v1 + v2;
-        return;
+        return; 
     }
 
 
