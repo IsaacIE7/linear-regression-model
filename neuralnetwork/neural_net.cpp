@@ -2,7 +2,7 @@
 #include <cmath>
 #include <utility>
 #include <vector>
-
+#include <cstdlib>
 #include "../matvec/vec.h"
 #include "../matvec/mat.h"
 
@@ -18,16 +18,35 @@ struct Layer {
 
     Layer(int neurons, int weightAmnt): // layer with n neurons and k weights, weights and biases init to 0
         weights(Mat(neurons, weightAmnt)), 
-        bias(neurons, 0) {}
+        bias(neurons, 0),
+        neurons(neurons),
+        weightAmnt(weightAmnt)
+        {
+            for (int j = 0; j < weightAmnt; j++) {
+                for (int i = 0; i < neurons; i++) {
+                    weights.entries[i][j] = randomWeight();
+                }
+            }
+
+            for (double& b: bias.comps) {
+                b = randomWeight();
+            }
+        }
 
     Layer(Mat weights, Vec bias): 
         weights(weights),
-        bias(bias) {}
+        bias(bias), 
+        neurons(weights.rows),
+        weightAmnt(weights.cols) {}
 
-    pair<Vec, Vec> forward(const Vec& inputs) {
+    pair<Vec, Vec> forward_lyr(const Vec& inputs) {
         Vec z = (weights * inputs) + bias;
         Vec p = z.sigmoid_element_wise();
         return {z, p};
+    }
+
+    double randomWeight() {
+        return -1.0 + ((double)rand() / RAND_MAX) * 2.0;
     }
 };
 
@@ -48,11 +67,12 @@ struct NeuralNet {
         }
     }
 
+
     Vec forward(const Vec& input) {
         inputs.push_back(input);
 
         for (int i = 1; i < layers.size(); i++) {
-            auto pair = layers[i].forward(activations[i]);
+            auto pair = layers[i].forward_lyr(activations[i]);
             activations.push_back(pair.second);
             zValues.push_back(pair.second);   
             inputs.push_back(pair.second);    
@@ -76,5 +96,11 @@ struct NeuralNet {
 };
 
 int main(){
-    
+    NeuralNet N({2, 2, 1});
+    cout << N.forward({2, 3}).comps[0] << endl;
+    Vec L = N.loss_layer(3);
+    for (double d: L.comps) {
+        cout << d << endl;
+    }
+
 }
