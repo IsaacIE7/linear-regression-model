@@ -2,6 +2,7 @@
 #include "vec.h"
 #include <stdexcept>
 #include <vector>
+#include <iostream>
 
 using namespace std;
 
@@ -10,12 +11,20 @@ Mat::Mat(int rows, int cols): entries(rows, vector<double>(cols, 0)), dim({rows,
 Mat::Mat(vector<vector<double>> entries): entries(entries), dim({(int)entries.size(), (int)entries[0].size()}), rows((int)entries.size()), cols((int)entries[0].size()) {}
 
 Vec Mat::mat_mul(const Vec& v) const {
+
+    cout << "rows = " << rows << endl;
+cout << "cols = " << cols << endl;
+cout << "entries.size() = " << entries.size() << endl;
+cout << "v.dim = " << v.dim << endl;
     vector<double> vals(rows, 0);
     Vec res(vals);
     if (dim.second != v.dim) throw invalid_argument("matrix vector dimension mismatch");
-    for (int i = 0; i < (int)entries.size(); i++) {
+    
+    for (int i = 0; i < entries.size(); i++) {
+        cout << "row " << i << " size = "
+     << entries[i].size() << endl;
         double rowSum = 0;
-        for (int j = 0; j < (int)entries[0].size(); j++) rowSum += (v[j] * entries[i][j]);
+        for (int j = 0; j < entries[0].size(); j++) rowSum += (v[j] * entries[i][j]);
         res[i] = rowSum;
     }
     return res;

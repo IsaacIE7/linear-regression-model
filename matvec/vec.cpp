@@ -5,6 +5,8 @@
 
 using namespace std;
 
+struct Mat;
+
 Vec::Vec(int dim): dim(dim), comps(vector<double>(dim, 0)) {}
 
 Vec::Vec(int dim, double val): dim(dim), comps(vector<double>(dim, val)) {}

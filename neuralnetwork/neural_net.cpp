@@ -57,10 +57,11 @@ struct NeuralNet {
 
     vector<Vec> activations;
     vector<Vec> zValues;
-    vector<Vec> inputs;
 
     NeuralNet(vector<int> layout):
-    layout(layout)
+    layout(layout), 
+    activations({}), 
+    zValues({})
     {
         for (int i = 1; i < layout.size(); i++) {
             layers.push_back(Layer(layout[i], layout[i - 1]));
@@ -69,20 +70,26 @@ struct NeuralNet {
 
 
     Vec forward(const Vec& input) {
-        inputs.push_back(input);
+        activations.clear();
+        zValues.clear();
+
+        activations.push_back(input);
+        
+        auto current = layers[0].forward_lyr(input); //get first hidden layer activations
+        zValues.push_back(current.first); // add  first hidden layer z predictions to zvals list
+        activations.push_back(current.second); // add first hidden layer activations ot activation list
 
         for (int i = 1; i < layers.size(); i++) {
-            auto pair = layers[i].forward_lyr(activations[i]);
-            activations.push_back(pair.second);
-            zValues.push_back(pair.second);   
-            inputs.push_back(pair.second);    
+            current = layers[i].forward_lyr(activations[i - 1]);
+            zValues.push_back(current.first);
+            activations.push_back(current.second); 
         }
         return activations.back();
     }
 
     Vec loss_layer(int layerNum) {
         Vec p = activations[layerNum - 1];
-        Vec y = inputs[layerNum - 1];
+        Vec y = ;
 
         Vec v1 = y.transpose() * p.log_element_wise();
         Vec v2 = ((y.add_element_wise(-1)) * (-1.0)).transpose() * ((p.add_element_wise(-1) * (-1.0)).log_element_wise());
