@@ -89,7 +89,7 @@ struct NeuralNet {
 
     Vec loss_layer(int layerNum) {
         Vec p = activations[layerNum - 1];
-        Vec y = ;
+        Vec y = {2};
 
         Vec v1 = y.transpose() * p.log_element_wise();
         Vec v2 = ((y.add_element_wise(-1)) * (-1.0)).transpose() * ((p.add_element_wise(-1) * (-1.0)).log_element_wise());
@@ -102,12 +102,12 @@ struct NeuralNet {
 
 };
 
-int main(){
+int main() {
     NeuralNet N({2, 2, 1});
     cout << N.forward({2, 3}).comps[0] << endl;
-    Vec L = N.loss_layer(3);
-    for (double d: L.comps) {
-        cout << d << endl;
-    }
+    // Vec L = N.loss_layer(3);
+    // for (double d: L.comps) {
+    //     cout << d << endl;
+    // }
 
 }
