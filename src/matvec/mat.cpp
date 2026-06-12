@@ -11,18 +11,12 @@ Mat::Mat(int rows, int cols): entries(rows, vector<double>(cols, 0)), dim({rows,
 Mat::Mat(vector<vector<double>> entries): entries(entries), dim({(int)entries.size(), (int)entries[0].size()}), rows((int)entries.size()), cols((int)entries[0].size()) {}
 
 Vec Mat::mat_mul(const Vec& v) const {
-
-    cout << "rows = " << rows << endl;
-cout << "cols = " << cols << endl;
-cout << "entries.size() = " << entries.size() << endl;
-cout << "v.dim = " << v.dim << endl;
     vector<double> vals(rows, 0);
     Vec res(vals);
+    
     if (dim.second != v.dim) throw invalid_argument("matrix vector dimension mismatch");
     
     for (int i = 0; i < entries.size(); i++) {
-        cout << "row " << i << " size = "
-     << entries[i].size() << endl;
         double rowSum = 0;
         for (int j = 0; j < entries[0].size(); j++) rowSum += (v[j] * entries[i][j]);
         res[i] = rowSum;
@@ -34,23 +28,42 @@ Vec Mat::operator*(const Vec& v) const { return mat_mul(v); }
 
 Mat Mat::operator+(Mat m) const {
     if (dim != m.dim) throw invalid_argument("matrix dimension mismatch");
-    vector<vector<double>> vals(rows, vector<double>(cols, 0));
-    Mat res(vals);
+    Mat res(rows, cols);
     for (int i = 0; i < rows; i++) for (int j = 0; j < cols; j++) res.entries[i][j] = entries[i][j] + m.entries[i][j];
     return res;
 }
 
+Mat Mat::add_vec_to_row(const Vec& v) {
+    if (cols != v.dim) throw invalid_argument("columns and vec length mismatch");
+    Mat res(rows, cols);
+    for (int j = 0; j < cols; j++) {
+        for (int i = 0; i < rows; i++) {
+            res.entries[i][j] = entries[i][j] + v[j];
+        }
+    }
+
+}
+
+Mat Mat::operator+(double c) const {
+    Mat res(rows, cols);
+    for (int i = 0; i < rows; i++) for (int j = 0; j < cols; j++) res.entries[i][j] = entries[i][j] + c;
+    return res;
+}
 Mat Mat::operator-(Mat m) const {
     if (dim != m.dim) throw invalid_argument("matrix dimension mismatch");
-    vector<vector<double>> vals(rows, vector<double>(cols, 0));
-    Mat res(vals);
+    Mat res(rows, cols);
     for (int i = 0; i < rows; i++) for (int j = 0; j < cols; j++) res.entries[i][j] = entries[i][j] - m.entries[i][j];
     return res;
 }
 
+Mat Mat::operator-(double c) const {
+    Mat res(rows, cols);
+    for (int i = 0; i < rows; i++) for (int j = 0; j < cols; j++) res.entries[i][j] = entries[i][j] - c;
+    return res;
+}
+
 Mat Mat::operator*(double c) const {
-    vector<vector<double>> vals(rows, vector<double>(cols, 0));
-    Mat res(vals);
+    Mat res(rows, cols);
     for (int i = 0; i < rows; i++) for (int j = 0; j < cols; j++) res.entries[i][j] = c * entries[i][j];
     return res;
 }
@@ -74,6 +87,41 @@ Mat Mat::operator*(const Mat& m) {
     Mat res(m.rows, m.cols);
     for (int j = 0; j < m.cols; j++) for (int i = 0; i < rows; i++) res.entries[i][j] = this->row_vec(i) * m.col_vec(j);
     return res;
+}
+
+Mat Mat::sigmoid_element_wise() const {
+    Mat res(rows, cols);
+    for (int i = 0; i < rows; i++)  {
+        for (int j = 0; j < cols; j++) {
+            res.entries[i][j] = 1.0 / (1.0 + exp(-(*this).entries[i][j]));
+        }
+    }
+    return res;
+}
+
+// dont know if epsilon clipping should be done here or in loss func
+Mat Mat::log_element_wise() const {
+    Mat res(rows, cols);
+    const double epsilon = 1e-7;
+
+    for (int j = 0; j < cols; j++) {
+        for (int i = 0; i < rows; i++) {
+            if (entries[i][j] < epsilon) res.entries[i][j] = log(epsilon);
+            else if (entries[i][j] > 1 - epsilon) res.entries[i][j] = log(1 - epsilon);
+            else res.entries[i][j] = log((*this).entries[i][j]);
+        }
+    }
+    return res;
+}
+
+double Mat::sum_entries() const {
+    double sum = 0;
+    for (int j = 0; j < cols; j ++) {
+        for (int i = 0; i < rows; i++) {
+            sum += entries[i][j];
+        }
+    }
+    return sum;
 }
 
 Mat Mat::transpose() const {

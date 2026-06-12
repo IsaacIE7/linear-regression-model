@@ -22,7 +22,13 @@ struct Mat {
 
     Mat operator+(Mat m) const;
 
+    Mat add_vec_to_row(const Vec& v);
+
+    Mat operator+(double c) const;
+
     Mat operator-(Mat m) const;
+
+    Mat operator-(double c) const;
 
     Mat operator*(double c) const;
 
@@ -32,6 +38,11 @@ struct Mat {
 
     Mat operator*(const Mat& m);
 
+    Mat Mat::sigmoid_element_wise() const;
+
+    Mat Mat::log_element_wise() const;
+
+    double Mat::sum_entries() const;
 
     Mat transpose () const; //lets compiler know that original Mat isnt edited
 

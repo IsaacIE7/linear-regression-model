@@ -1,0 +1,3 @@
+C:/codingstuff/linearregression/build/CMakeFiles/neural_network.dir
+C:/codingstuff/linearregression/build/CMakeFiles/ALL_BUILD.dir
+C:/codingstuff/linearregression/build/CMakeFiles/ZERO_CHECK.dir

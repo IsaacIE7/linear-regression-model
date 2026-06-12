@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/codingstuff/linearregression/build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

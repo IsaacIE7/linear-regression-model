@@ -39,9 +39,15 @@ struct Layer {
         neurons(weights.rows),
         weightAmnt(weights.cols) {}
 
-    pair<Vec, Vec> forward_lyr(const Vec& inputs) {
+    pair<Vec, Vec> forward_lyr_single(const Vec& inputs) {
         Vec z = (weights * inputs) + bias;
         Vec p = z.sigmoid_element_wise();
+        return {z, p};
+    }
+
+    pair<Mat, Mat> forward_lyr(const Mat& inputs) {
+        Mat z = (weights.transpose() * inputs).add_vec_to_row(bias);
+        Mat p = z.sigmoid_element_wise();
         return {z, p};
     }
 
@@ -55,8 +61,8 @@ struct NeuralNet {
     vector<int> layout;
     vector<Layer> layers;
 
-    vector<Vec> activations;
-    vector<Vec> zValues;
+    vector<Mat> activations;
+    vector<Mat> zValues;
 
     NeuralNet(vector<int> layout):
     layout(layout), 
@@ -69,45 +75,46 @@ struct NeuralNet {
     }
 
 
-    Vec forward(const Vec& input) {
+    Mat forward(const Mat& data) {
         activations.clear();
         zValues.clear();
 
-        activations.push_back(input);
+        activations.push_back(data);
         
-        auto current = layers[0].forward_lyr(input); //get first hidden layer activations
+        auto current = layers[0].forward_lyr(data); //get first hidden layer activation and z values
         zValues.push_back(current.first); // add  first hidden layer z predictions to zvals list
         activations.push_back(current.second); // add first hidden layer activations ot activation list
 
         for (int i = 1; i < layers.size(); i++) {
-            current = layers[i].forward_lyr(activations[i - 1]);
+            current = layers[i].forward_lyr(activations[i]); //layers doesnt include input layer, activations does
             zValues.push_back(current.first);
             activations.push_back(current.second); 
         }
         return activations.back();
     }
 
-    Vec loss_layer(int layerNum) {
-        Vec p = activations[layerNum - 1];
-        Vec y = {2};
+    double loss(const Mat& y) {
+        Mat p = activations.back();
 
-        Vec v1 = y.transpose() * p.log_element_wise();
-        Vec v2 = ((y.add_element_wise(-1)) * (-1.0)).transpose() * ((p.add_element_wise(-1) * (-1.0)).log_element_wise());
+        Mat v1 = y.transpose() * p.log_element_wise() * -1;
+        Mat v2 = ((y - 1) * (-1.0)).transpose() * (((p - 1) * (-1.0)).log_element_wise());
         
-        Vec res = v1 + v2;
+        Mat res = v1 + v2;
 
-        return res * (1.0 / y.dim); 
+        return (res * (1.0 / (y.rows * y.cols))).sum_entries(); 
     }
-
-
 };
 
 int main() {
     NeuralNet N({2, 2, 1});
-    cout << N.forward({2, 3}).comps[0] << endl;
-    // Vec L = N.loss_layer(3);
-    // for (double d: L.comps) {
-    //     cout << d << endl;
-    // }
+    Mat p = N.forward(Mat({{1.0, 1.0}, {2.0, 1.0}, {3.0, 1.0}}));
+    Mat y({{0.0}, {0.0}, {1.0}});
+    double L = N.loss(y);
+    for (auto a: p.entries) {
+        for (auto b: a) {
+            cout << b << " ";
+        }
+    }
+    cout << L << endl;
 
 }

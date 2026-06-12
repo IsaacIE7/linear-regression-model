@@ -1,0 +1,8 @@
+================================================================================
+Linker Errors
+Generated: 2026-06-12T03:29:56.157Z
+Total Errors: 1
+================================================================================
+
+[LNK1168] (MSVC)
+cannot open C:\codingstuff\linearregression\build\Debug\neural_network.exe for writing [C:\codingstuff\linearregression\build\neural_network.vcxproj]
