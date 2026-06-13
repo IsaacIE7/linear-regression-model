@@ -41,7 +41,7 @@ Mat Mat::add_vec_to_row(const Vec& v) {
             res.entries[i][j] = entries[i][j] + v[j];
         }
     }
-
+    return res;
 }
 
 Mat Mat::operator+(double c) const {
@@ -82,10 +82,21 @@ Vec Mat::col_vec(int col) const {
     return Vec(vals);
 }
 
-Mat Mat::operator*(const Mat& m) {
-    if (cols != m.rows) throw invalid_argument("matrix dimension incompatibility");
-    Mat res(m.rows, m.cols);
+Mat Mat::operator*(const Mat& m) const {
+    if (cols != m.rows) throw invalid_argument("mat * mat, matrix dimension incompatibility");
+    Mat res(rows, m.cols);
     for (int j = 0; j < m.cols; j++) for (int i = 0; i < rows; i++) res.entries[i][j] = this->row_vec(i) * m.col_vec(j);
+    return res;
+}
+
+Mat Mat::multiply_element_wise(const Mat& m) const{
+    if (rows != m.rows != cols != m.cols) throw invalid_argument("mat * mat, matrix dimension incompatibility");
+    Mat res(rows, cols);
+    for (int i = 0; i < rows; i++)  {
+        for (int j = 0; j < cols; j++) {
+            res.entries[i][j] = entries[i][j] * m.entries[i][j];
+        }
+    }
     return res;
 }
 

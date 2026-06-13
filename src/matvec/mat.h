@@ -36,13 +36,15 @@ struct Mat {
 
     Vec col_vec(int col) const;
 
-    Mat operator*(const Mat& m);
+    Mat operator*(const Mat& m) const;
 
-    Mat Mat::sigmoid_element_wise() const;
+    Mat multiply_element_wise(const Mat& m) const;
 
-    Mat Mat::log_element_wise() const;
+    Mat sigmoid_element_wise() const;
 
-    double Mat::sum_entries() const;
+    Mat log_element_wise() const;
+
+    double sum_entries() const;
 
     Mat transpose () const; //lets compiler know that original Mat isnt edited
 

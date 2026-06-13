@@ -46,10 +46,13 @@ struct Layer {
     }
 
     pair<Mat, Mat> forward_lyr(const Mat& inputs) {
-        Mat z = (weights.transpose() * inputs).add_vec_to_row(bias);
+        Mat z = (inputs * weights.transpose()).add_vec_to_row(bias);
         Mat p = z.sigmoid_element_wise();
+
         return {z, p};
     }
+
+    
 
     double randomWeight() {
         return -1.0 + ((double)rand() / RAND_MAX) * 2.0;
@@ -93,20 +96,24 @@ struct NeuralNet {
         return activations.back();
     }
 
-    double loss(const Mat& y) {
+    double loss(Mat y) {
         Mat p = activations.back();
 
-        Mat v1 = y.transpose() * p.log_element_wise() * -1;
-        Mat v2 = ((y - 1) * (-1.0)).transpose() * (((p - 1) * (-1.0)).log_element_wise());
+        Mat m1 = y.multiply_element_wise(p.log_element_wise());
+        Mat m2 = ((y - 1) * (-1.0)).multiply_element_wise((((p - 1) * (-1.0)).log_element_wise()));
         
-        Mat res = v1 + v2;
+        Mat res = (m1 + m2) * -1;
 
         return (res * (1.0 / (y.rows * y.cols))).sum_entries(); 
+    }
+
+    Mat backprop() {
+        
     }
 };
 
 int main() {
-    NeuralNet N({2, 2, 1});
+    NeuralNet N({2, 3, 1});
     Mat p = N.forward(Mat({{1.0, 1.0}, {2.0, 1.0}, {3.0, 1.0}}));
     Mat y({{0.0}, {0.0}, {1.0}});
     double L = N.loss(y);
