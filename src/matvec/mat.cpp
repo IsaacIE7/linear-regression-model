@@ -50,7 +50,10 @@ Mat Mat::operator+(double c) const {
     return res;
 }
 Mat Mat::operator-(Mat m) const {
-    if (dim != m.dim) throw invalid_argument("matrix dimension mismatch");
+    if (rows != m.rows || cols != m.cols) {
+        throw invalid_argument("Mat - Mat dimension mismatch");
+    }
+
     Mat res(rows, cols);
     for (int i = 0; i < rows; i++) for (int j = 0; j < cols; j++) res.entries[i][j] = entries[i][j] - m.entries[i][j];
     return res;
@@ -90,7 +93,7 @@ Mat Mat::operator*(const Mat& m) const {
 }
 
 Mat Mat::multiply_element_wise(const Mat& m) const{
-    if (rows != m.rows != cols != m.cols) throw invalid_argument("mat * mat, matrix dimension incompatibility");
+    if (rows != m.rows || cols != m.cols) throw invalid_argument("element wise mat * mat, matrix dimension incompatibility");
     Mat res(rows, cols);
     for (int i = 0; i < rows; i++)  {
         for (int j = 0; j < cols; j++) {

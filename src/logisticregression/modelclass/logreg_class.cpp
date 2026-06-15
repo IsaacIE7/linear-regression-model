@@ -77,10 +77,10 @@ struct Model {
     }
 
     static Vec gradient(Vec& p, const Vec& y, const Mat& X) {
-    Mat Xt = X.transpose();
+        Mat Xt = X.transpose();
     
-    Vec grad = Xt * (p - y);
-    return grad * (1.0/p.dim); 
+        Vec grad = Xt * (p - y);
+        return grad * (1.0/p.dim); 
     } 
 
     static double sum_partials(const Vec& gradient) {
