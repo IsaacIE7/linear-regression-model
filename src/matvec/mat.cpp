@@ -85,10 +85,30 @@ Vec Mat::col_vec(int col) const {
     return Vec(vals);
 }
 
+// Mat Mat::operator*(const Mat& m) const {
+//     if (cols != m.rows) throw invalid_argument("mat * mat, matrix dimension incompatibility");
+//     Mat res(rows, m.cols);
+//     for (int j = 0; j < m.cols; j++) {
+//         for (int i = 0; i < rows; i++) { 
+//             res.entries[i][j] = this->row_vec(i) * m.col_vec(j);
+//             }
+//         }
+//     return res;
+// }
+
 Mat Mat::operator*(const Mat& m) const {
     if (cols != m.rows) throw invalid_argument("mat * mat, matrix dimension incompatibility");
     Mat res(rows, m.cols);
-    for (int j = 0; j < m.cols; j++) for (int i = 0; i < rows; i++) res.entries[i][j] = this->row_vec(i) * m.col_vec(j);
+  
+    for (int j = 0; j < m.cols; j++) {
+        for (int i = 0; i < rows; i++) { 
+            double sum = 0;
+            for (int k = 0; k < cols; k++) {
+                sum += (*this).entries[i][k] * m.entries[k][j];
+            }
+            res.entries[i][j] = sum;
+            }
+        }
     return res;
 }
 
