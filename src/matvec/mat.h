@@ -15,7 +15,6 @@ struct Mat {
 
     Mat(vector<vector<double>> entries); // create matrix with initialized values
 
-
     Vec mat_mul(const Vec& v) const;
 
     Vec operator*(const Vec& v) const;
@@ -41,6 +40,8 @@ struct Mat {
     Mat multiply_element_wise(const Mat& m) const;
 
     Mat sigmoid_element_wise() const;
+
+    Mat softmax_element_wise() const;
 
     Mat log_element_wise() const;
 

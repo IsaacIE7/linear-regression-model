@@ -6,9 +6,17 @@
 
 using namespace std;
 
-Mat::Mat(int rows, int cols): entries(rows, vector<double>(cols, 0)), dim({rows, cols}), rows(rows), cols(cols) {}
+Mat::Mat(int rows, int cols): 
+    entries(rows, vector<double>(cols, 0)), 
+    dim({rows, cols}), 
+    rows(rows), 
+    cols(cols) {}
 
-Mat::Mat(vector<vector<double>> entries): entries(entries), dim({(int)entries.size(), (int)entries[0].size()}), rows((int)entries.size()), cols((int)entries[0].size()) {}
+Mat::Mat(vector<vector<double>> entries): 
+    entries(entries), 
+    dim({(int)entries.size(), 
+    (int)entries[0].size()}), 
+    rows((int)entries.size()), cols((int)entries[0].size()) {}
 
 Vec Mat::mat_mul(const Vec& v) const {
     vector<double> vals(rows, 0);
@@ -97,8 +105,10 @@ Vec Mat::col_vec(int col) const {
 // }
 
 Mat Mat::operator*(const Mat& m) const {
-    if (cols != m.rows) throw invalid_argument("mat * mat, matrix dimension incompatibility");
-    Mat res(rows, m.cols);
+
+    if (cols != m.rows)  {  cout << "rows: " << rows << " cols: " << cols << endl;
+    cout << "m.rows: " << m.rows << " m.cols: " << m.cols << endl; throw invalid_argument("mat * mat, matrix dimension incompatibility");
+}Mat res(rows, m.cols);
   
     for (int j = 0; j < m.cols; j++) {
         for (int i = 0; i < rows; i++) { 
@@ -132,6 +142,34 @@ Mat Mat::sigmoid_element_wise() const {
     }
     return res;
 }
+
+Mat Mat::softmax_element_wise() const {
+    Mat res(rows, cols);
+
+    for (int i = 0; i < rows; i++) {
+
+
+        double max_val = entries[i][0];
+        for (int j = 1; j < cols; j++) {
+            if (entries[i][j] > max_val) {
+                max_val = entries[i][j];
+            }
+        }
+
+        double exp_sum = 0;
+        for (int j = 0; j < entries[0].size(); j++) {
+             exp_sum += exp(entries[i][j] - max_val);
+        }
+
+        for (int j = 0; j < cols; j++) {
+            res.entries[i][j] = exp(entries[i][j] - max_val)/(exp_sum);
+        }    
+    }
+    
+    return res;
+}
+
+
 
 // dont know if epsilon clipping should be done here or in loss func
 Mat Mat::log_element_wise() const {

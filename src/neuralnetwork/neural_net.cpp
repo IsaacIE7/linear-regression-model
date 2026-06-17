@@ -58,6 +58,13 @@ struct Layer {
         return {z, p};
     }
 
+    pair<Mat, Mat> softmax_forward_lyr(const Mat& inputs) {
+        Mat z = (inputs * weights.transpose()).add_vec_to_row(bias);
+        Mat p = z.softmax_element_wise();
+
+        return {z, p};
+    }
+
     Mat gradient_w_lyr(const Mat& prev_activation, const Mat& D) { // pass in p - y if output layer
         return D.transpose() * prev_activation * (1.0 / prev_activation.rows);
     }
@@ -114,9 +121,16 @@ struct NeuralNet {
         activations.push_back(current.second); // add first hidden layer activations ot activation list
 
         for (int i = 1; i < layers.size(); i++) {
-            current = layers[i].forward_lyr(activations[i]); //layers doesnt include input layer, activations does
-            zValues.push_back(current.first);
-            activations.push_back(current.second); 
+            if (i == layers.size() - 1) {
+                current = layers[i].softmax_forward_lyr(activations[i]); 
+                zValues.push_back(current.first);
+                activations.push_back(current.second); 
+            } else {
+                current = layers[i].forward_lyr(activations[i]); //layers doesnt include input layer, activations does
+                zValues.push_back(current.first);
+                activations.push_back(current.second); 
+            }
+            
         }
         return activations.back();
     }
@@ -196,16 +210,16 @@ struct NeuralNet {
         }
     }
 
-    void train(const Mat& data, const Mat& y, int epochs, double learning_rate) {
+    void train(const Mat& data, const Mat& y, int epochs, double learning_rate, double tolerance) {
         forward(data);
         double current_loss = loss(y);
         int i = 0;
 
-        while (i < epochs && current_loss > 1e-3) {
+        while (i < epochs && current_loss > tolerance) {
             forward(data);
             current_loss = loss(y);
 
-            if (i % 10000 == 0) {
+            if (i % 100 == 0) {
             cout << "iteration " << i
                  << " Loss: " << current_loss
                  << " Accuracy: " << accuracy_binary(data, y)
@@ -249,6 +263,47 @@ struct NeuralNet {
         return res;
     }
 
+    Mat predict_softargmax(const Mat& data) {
+        Mat P = forward(data);
+        Mat res(P.rows, P.cols);
+
+
+        for (int i = 0; i < P.rows; i++) {
+            double max = P.entries[i][0];
+            int in = 0;
+            for (int j = 0; j < P.cols; j++) {
+                if (P.entries[i][j] > max) {
+                    max = P.entries[i][j]; 
+                    in = j;
+                }
+            }
+            res.entries[i][in] = 1;
+        }
+
+        return res;
+    }
+
+         //only to be used with ONE sample
+    int predict_softargmax_classify_num(const Mat& data) {
+        Mat P = forward(data);
+        Mat res(P.rows, P.cols);
+        int in = 0;
+
+        for (int i = 0; i < P.rows; i++) {
+            double max = P.entries[i][0];
+            in = 0;
+            for (int j = 0; j < P.cols; j++) {
+                if (P.entries[i][j] > max) {
+                    max = P.entries[i][j]; 
+                    in = j;
+                }
+            }
+            res.entries[i][in] = 1;
+        }
+
+        return in;
+    }
+
     double accuracy_binary(const Mat& data, const Mat& y) {
         Mat pred = predict_binary(data);
 
@@ -270,11 +325,39 @@ struct NeuralNet {
         return (double)correct / total;
     }
 
+    double accuracy_10(const Mat& data, const Mat& y) {
+        Mat pred = predict_softargmax(data);
+
+        if (pred.rows != y.rows || pred.cols != y.cols) {
+            throw invalid_argument("accuracy dimension mismatch");
+        }
+
+        int matchingentries = 0;
+        int imagecorrect = 0;
+        int total = y.rows;
+
+        for (int i = 0; i < pred.rows; i++) {
+            matchingentries = 0;
+            for (int j = 0; j < pred.cols; j++) {
+                if (pred.entries[i][j] == y.entries[i][j]) {
+                    matchingentries++;
+                }
+            }
+            if (matchingentries == 10) imagecorrect++;
+        }
+
+        return (double)imagecorrect / total;
+    }
+
+    
+
 
 };
 
+
+// 0's and 1's only
 //uint8_t is unsigned 8 bit integer 0-255
-pair<Mat, Mat> convert_data(const mnist::MNIST_dataset<uint8_t, uint8_t>& dataset, int num_samples) {
+pair<Mat, Mat> convert_data_binaryclassification(const mnist::MNIST_dataset<uint8_t, uint8_t>& dataset, int num_samples) {
     if (dataset.training_labels.empty())  throw invalid_argument("MNIST failed to load. Check file paths and filenames.");
 
     Mat X(num_samples, 784);
@@ -301,6 +384,33 @@ pair<Mat, Mat> convert_data(const mnist::MNIST_dataset<uint8_t, uint8_t>& datase
             
             count++;
         }     
+    }
+
+    return {X, Y};
+}
+
+//uint8_t is unsigned 8 bit integer 0-255
+pair<Mat, Mat> convert_data(const mnist::MNIST_dataset<uint8_t, uint8_t>& dataset, int num_samples) {
+    if (dataset.training_labels.empty())  throw invalid_argument("MNIST failed to load. Check file paths and filenames.");
+
+    Mat X(num_samples, 784);
+    Mat Y(num_samples, 10);
+
+    const auto& training_images = dataset.training_images;
+    const auto& training_labels = dataset.training_labels;
+    // auto test_images = dataset.test_images;
+    // auto test_labels = dataset.test_labels;
+    
+    int count = 0;
+
+    for (int i = 0; i < num_samples && i < training_labels.size(); i++) {
+        for (int j = 0; j < training_images[0].size(); j++) {
+                 X.entries[i][j] = training_images[i][j] / 255.0; 
+        }    
+
+        // i is sample num/row and training_labels[i] is the index we want to store 1 to represent the digit, i from 0-9
+        //called one-hot encoding
+        Y.entries[i][training_labels[i]] = 1;  
     }
 
     return {X, Y};
@@ -370,210 +480,217 @@ void display(vector<int> layout) {
         }
 
 
-        DrawText("FPS: 60", 20, 15, 20, GREEN); 
+        // DrawText("FPS: 60", 20, 15, 20, GREEN); 
         EndDrawing(); 
     } 
 
     CloseWindow(); 
 }
 
+//UTILS
 
+int predict_digit(NeuralNet& N, const Mat& input) {
+    Mat probs = N.forward(input);
 
-// int main() {
-//     NeuralNet N({2, 3, 1});
-//     Mat p = N.forward(Mat({{1.0, 1.0}, {2.0, 1.0}, {3.0, 1.0}}));
-//     Mat y({{0.0}, {0.0}, {1.0}});
-//     double L = N.loss(y);
-//     for (auto a: p.entries) {
-//         for (auto b: a) {
-//             cout << b << " ";
-//         }
-//     }
-//     cout << L << endl;
-// }
+    int bestIndex = 0;
+    double bestValue = probs.entries[0][0];
 
+    for (int j = 1; j < probs.cols; j++) {
+        if (probs.entries[0][j] > bestValue) {
+            bestValue = probs.entries[0][j];
+            bestIndex = j;
+        }
+    }
 
-// ======= MAIN 2 =======
+    return bestIndex;
+}
+
+void draw_on_canvas(std::vector<double>& canvas, int row, int col, int radius = 1) {
+    for (int dr = -radius; dr <= radius; dr++) {
+        for (int dc = -radius; dc <= radius; dc++) {
+            int r = row + dr;
+            int c = col + dc;
+
+            if (r >= 0 && r < 28 && c >= 0 && c < 28) {
+                double dist2 = dr * dr + dc * dc;
+
+                if (dist2 <= radius * radius) {
+                    canvas[r * 28 + c] = 1.0;
+                }
+            }
+        }
+    }
+}
+
+Mat canvas_to_mat(const std::vector<double>& canvas) {
+    Mat input(1, 784);
+
+    for (int i = 0; i < 784; i++) {
+        input.entries[0][i] = canvas[i];
+    }
+
+    return input;
+}
+
+void print_probs(NeuralNet& N, const Mat& input) {
+    Mat probs = N.forward(input);
+
+    for (int j = 0; j < probs.cols; j++) {
+        cout << j << ": " << probs.entries[0][j] << endl;
+    }
+}
+
+void draw_digit_window(NeuralNet& N) {
+    const int screenWidth = 800;
+    const int screenHeight = 700;
+
+    const int canvasX = 120;
+    const int canvasY = 80;
+    const int cellSize = 20;
+    const int gridSize = 28;
+    const int canvasSize = gridSize * cellSize;
+
+    std::vector<double> canvas(28 * 28, 0.0);
+
+    int prediction = -1;
+
+    InitWindow(screenWidth, screenHeight, "Draw a digit");
+    SetTargetFPS(60);
+
+    while (!WindowShouldClose()) {
+        Vector2 mouse = GetMousePosition();
+
+        bool insideCanvas =
+            mouse.x >= canvasX &&
+            mouse.x < canvasX + canvasSize &&
+            mouse.y >= canvasY &&
+            mouse.y < canvasY + canvasSize;
+
+        if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) && insideCanvas) {
+            int col = (mouse.x - canvasX) / cellSize;
+            int row = (mouse.y - canvasY) / cellSize;
+
+            draw_on_canvas(canvas, row, col, 1);
+        }
+
+        if (IsKeyPressed(KEY_C)) {
+            std::fill(canvas.begin(), canvas.end(), 0.0);
+            prediction = -1;
+        }
+
+        if (IsKeyPressed(KEY_ENTER)) {
+            Mat input = canvas_to_mat(canvas);
+            prediction = predict_digit(N, input);
+            print_probs(N, input);
+        }
+
+        BeginDrawing();
+        ClearBackground(DARKGRAY);
+
+        DrawText("Draw digit with mouse", 120, 25, 24, WHITE);
+        DrawText("ENTER = predict, C = clear", 120, 50, 20, LIGHTGRAY);
+
+        // Draw canvas background
+        DrawRectangle(canvasX, canvasY, canvasSize, canvasSize, BLACK);
+
+        // Draw the 28x28 pixels enlarged
+        for (int r = 0; r < 28; r++) {
+            for (int c = 0; c < 28; c++) {
+                double val = canvas[r * 28 + c];
+                unsigned char shade = (unsigned char)(val * 255.0);
+
+                Color color = { shade, shade, shade, 255 };
+
+                DrawRectangle(
+                    canvasX + c * cellSize,
+                    canvasY + r * cellSize,
+                    cellSize,
+                    cellSize,
+                    color
+                );
+            }
+        }
+
+        // Optional grid lines
+        for (int i = 0; i <= 28; i++) {
+            DrawLine(canvasX, canvasY + i * cellSize, canvasX + canvasSize, canvasY + i * cellSize, GRAY);
+            DrawLine(canvasX + i * cellSize, canvasY, canvasX + i * cellSize, canvasY + canvasSize, GRAY);
+        }
+
+        if (prediction != -1) {
+            DrawText(
+                TextFormat("Prediction: %d", prediction),
+                120,
+                canvasY + canvasSize + 30,
+                32,
+                GREEN
+            );
+        }
+
+        EndDrawing();
+    }
+
+    CloseWindow();
+}
+
+//END OF UTILS
 
 
 // int main() {
 //     try {
-//         srand(0);
 
-//         // auto print_results = [](NeuralNet& N, const Mat& X, const Mat& y) {
-//         //     Mat p = N.forward(X);
-//         //     cout << "Loss: " << N.loss(y) << endl;
-
-//         //     for (int i = 0; i < p.rows; i++) {
-//         //         double prob = p.entries[i][0];
-//         //         int pred = prob >= 0.5 ? 1 : 0;
-
-//         //         cout << X.entries[i][0] << ", " << X.entries[i][1]
-//         //              << " -> prob: " << prob
-//         //              << " pred: " << pred
-//         //              << " actual: " << y.entries[i][0]
-//         //              << endl;
-//         //     }
-//         // };
-
-//         // Mat X({
-//         //     {0.0, 0.0},
-//         //     {0.0, 1.0},
-//         //     {1.0, 0.0},
-//         //     {1.0, 1.0}
-//         // });
-
-//         // Mat y_and({
-//         //     {0.0},
-//         //     {0.0},
-//         //     {0.0},
-//         //     {1.0}
-//         // });
-
-//         // Mat y_xor({
-//         //     {0.0},
-//         //     {1.0},
-//         //     {1.0},
-//         //     {0.0}
-//         // });
-
-//         // cout << "================ AND TEST ================" << endl;
-
-//         // NeuralNet and_net({2, 3, 1});
-
-//         // cout << "\nBefore training:" << endl;
-//         // print_results(and_net, X, y_and);
-
-//         // cout << "\nTraining AND..." << endl;
-//         // and_net.train(X, y_and, 50000, 0.1);
-
-//         // cout << "\nAfter training:" << endl;
-//         // print_results(and_net, X, y_and);
-
-
-//         // cout << "\n\n================ XOR TEST ================" << endl;
-
-//         // NeuralNet xor_net({2, 4, 1});
-
-//         // cout << "\nBefore training:" << endl;
-//         // print_results(xor_net, X, y_xor);
-
-//         // cout << "\nTraining XOR..." << endl;
-//         // xor_net.train(X, y_xor, 100000, 0.5);
-
-//         // cout << "\nAfter training:" << endl;
-//         // print_results(xor_net, X, y_xor);
-
-//         // cout << "XOR accuracy: " << xor_net.accuracy_binary(X, y_xor) << endl;
+// std::vector<double> mnist_flattened_1_255 = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 180.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 180.0, 255.0, 255.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 180.0, 255.0, 255.0, 180.0, 255.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 180.0, 255.0, 255.0, 180.0, 0.0, 0.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 180.0, 255.0, 255.0, 255.0, 255.0, 255.0, 255.0, 180.0, 80.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 180.0, 255.0, 255.0, 255.0, 255.0, 255.0, 255.0, 180.0, 80.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
 
 //         auto dataset = mnist::read_dataset<uint8_t, uint8_t>();
 
-// cout << "Training images: " << dataset.training_images.size() << endl;
-// cout << "Training labels: " << dataset.training_labels.size() << endl;
-// cout << "Test images: " << dataset.test_images.size() << endl;
-// cout << "Test labels: " << dataset.test_labels.size() << endl;
-
-// if (!dataset.training_labels.empty()) {
-//     cout << "First label: " << (int)dataset.training_labels[0] << endl;
-//     cout << "First image pixel count: " << dataset.training_images[0].size() << endl;
-// } else {
-//     cout << "MNIST failed to load. Check file paths and filenames." << endl;
-// }
-//     }
-//     catch (const std::exception& e) {
-//         cout << "Runtime error: " << e.what() << endl;
-//     }
-
-//     return 0;
-// }
-
-// int main() {
-//     try {
-//         auto dataset = mnist::read_dataset<uint8_t, uint8_t>();
-
-//         cout << "Raw MNIST loaded:" << endl;
-//         cout << "Training images: " << dataset.training_images.size() << endl;
-//         cout << "Training labels: " << dataset.training_labels.size() << endl;
-//         cout << "Test images: " << dataset.test_images.size() << endl;
-//         cout << "Test labels: " << dataset.test_labels.size() << endl;
-
-//         auto converted = convert_data(dataset, 1000);
-
-//         Mat X = converted.first;
-//         Mat Y = converted.second;
-
-//         cout << "\nConverted binary dataset:" << endl;
-//         cout << "X: " << X.rows << " x " << X.cols << endl;
-//         cout << "Y: " << Y.rows << " x " << Y.cols << endl;
-
-//         cout << "\nFirst 10 labels after conversion:" << endl;
-//         for (int i = 0; i < 10; i++) {
-//             cout << Y.entries[i][0] << " ";
-//         }
-//         cout << endl;
-
-//         cout << "\nFirst image first 20 pixels:" << endl;
-//         for (int j = 0; j < 20; j++) {
-//             cout << X.entries[0][j] << " ";
-//         }
-//         cout << endl;
-
-//         double minPixel = X.entries[0][0];
-//         double maxPixel = X.entries[0][0];
-
-//         for (int i = 0; i < X.rows; i++) {
-//             for (int j = 0; j < X.cols; j++) {
-//                 if (X.entries[i][j] < minPixel) minPixel = X.entries[i][j];
-//                 if (X.entries[i][j] > maxPixel) maxPixel = X.entries[i][j];
-//             }
-//         }
-
-//         cout << "\nPixel range:" << endl;
-//         cout << "min: " << minPixel << endl;
-//         cout << "max: " << maxPixel << endl;
-
-//         int zeros = 0;
-//         int ones = 0;
-
-//         for (int i = 0; i < Y.rows; i++) {
-//             if (Y.entries[i][0] == 0.0) zeros++;
-//             else if (Y.entries[i][0] == 1.0) ones++;
-//             else cout << "Bad label at row " << i << ": " << Y.entries[i][0] << endl;
-//         }
-
-//         cout << "\nLabel counts:" << endl;
-//         cout << "zeros: " << zeros << endl;
-//         cout << "ones: " << ones << endl;
-//     }
-//     catch (const exception& e) {
-//         cout << "Runtime error: " << e.what() << endl;
-//     }
-
-//     return 0;
-// }
-
-// int main() {
-//     try {
-//         auto dataset = mnist::read_dataset<uint8_t, uint8_t>();
-
-//         auto train = convert_data(dataset, 50);
+//         auto train = convert_data(dataset, 5000);
 //         Mat X_train = train.first;
 //         Mat y_train = train.second;
 
-//         NeuralNet N({784, 32, 1});
+//         NeuralNet N({784, 32, 10});
 
 //         cout << "Before training:" << endl;
 //         N.forward(X_train);
 //         cout << "Loss: " << N.loss(y_train) << endl;
-//         cout << "Accuracy: " << N.accuracy_binary(X_train, y_train) << endl;
+//         cout << "Accuracy: " << N.accuracy_10(X_train, y_train) << endl;
 
 //         cout << "\nTraining..." << endl;
-//         N.train(X_train, y_train, 1000, 0.1);
+//         N.train(X_train, y_train, 1000, 0.1, 0.15);
 
 //         cout << "\nAfter training:" << endl;
 //         N.forward(X_train);
 //         cout << "Loss: " << N.loss(y_train) << endl;
-//         cout << "Accuracy: " << N.accuracy_binary(X_train, y_train) << endl;
+//         cout << "Accuracy: " << N.accuracy_10(X_train, y_train) << endl;
+
+        
+//         Mat X(1, mnist_flattened_1_255.size()); 
+//         X.entries = {{mnist_flattened_1_255}};
+
+//         cout << "data set rows: " << X.rows << " cols: " << X.cols << endl;
+//         auto p = N.forward(X);
+//         cout << "data set rows: " << p.rows << " cols: " << p.cols << endl << endl;
+
+//         Mat P = N.predict_softargmax(X);
+
+//         Mat P2 = N.forward(X);
+
+//         for (auto d: P.entries) {
+//             for (double m: d) {
+//                 cout << m << " ";
+//             }
+//         }
+
+//         cout << endl << endl;
+
+//         int i = 0;
+//         for (auto d: P2.entries) {
+//             for (double m: d) {
+//                 cout << "'" << i << "': " <<  m * 100 << "% ";
+//             }
+//         }
+
+//         cout << endl << endl << "Digit classification: " << N.predict_softargmax_classify_num(X);
+
 //     }
 //     catch (const exception& e) {
 //         cout << "Runtime error: " << e.what() << endl;
@@ -583,9 +700,70 @@ void display(vector<int> layout) {
 // }
 
 int main() {
-    display({20, 10, 5});
+    try {
+        srand(0);
+
+        auto dataset = mnist::read_dataset<uint8_t, uint8_t>();
+        NeuralNet N({784, 64, 10});
+        auto data = convert_data(dataset, 5000);
+
+        Mat X_data = data.first;
+        Mat y_data = data.second;
+
+        
+
+        N.train(X_data, y_data, 1000, 0.1, 0.1);
+
+        cout << "Train accuracy: " << N.accuracy_10(X_data, y_data) << endl;
+
+        draw_digit_window(N);
+    }
+    catch (const exception& e) {
+        cout << "Runtime error: " << e.what() << endl;
+    }
+
     return 0;
 }
+
+// int main() {
+//     display({6, 4, 2});
+//     return 0;
+// }
+
+// int main() {
+//     // auto dataset = mnist::read_dataset<uint8_t, uint8_t>();
+//     // auto data = convert_data(dataset, 200);
+//     // Mat X = data.first;
+//     // Mat Y = data.second;
+
+//     // cout << "X rows, cols = " << X.rows << " x " << X.cols << endl;
+//     // cout << "Y rows, cols = " << Y.rows << " x " << Y.cols << endl;
+
+//     // cout << "first image: ";
+//     // for (int i = 0; i < 28; i++) {
+//     //      cout << X.entries[0][i + 300] << " ";
+//     // }
+
+//     // cout << endl;
+
+//     // cout  <<  "first label: ";
+//     // for (int i = 0; i < Y.entries[0].size(); i++) {
+//     //     cout << Y.entries[0][i] << " ";
+//     // }
+
+//     vector<vector<double>> entries = {{2, 1, 10, 6}};
+//     Mat X = entries;
+//     X = X.softmax_element_wise();
+//     for (auto d: X.entries) {
+//         for (double n: d) {
+//             cout << n << " ";
+//         }
+//     }
+
+
+
+//     return 0;
+// }
 
 
 
