@@ -1,5 +1,6 @@
 #include <vector>
 #include <initializer_list>
+#include <json.hpp>
 
 using namespace std;
 
@@ -8,6 +9,8 @@ struct Mat; // forward declaration Mat so Vec can reference it before Mat is def
 struct Vec {
     vector<double> comps;
     int dim = 0;
+
+    Vec();
 
     Vec(int dim); //create n dimensional vector with components initialized to 0
 
@@ -48,3 +51,7 @@ struct Vec {
 
     Vec sigmoid_element_wise() const;
 };
+
+void to_json(nlohmann::json& j, const Vec& v);
+
+void from_json(const nlohmann::json& j, Vec& v);

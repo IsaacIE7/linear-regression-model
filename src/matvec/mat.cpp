@@ -4,7 +4,13 @@
 #include <vector>
 #include <iostream>
 
+#include <json.hpp>
+using json = nlohmann::json;
+
 using namespace std;
+
+Mat::Mat(): rows(0), cols(0), dim({0,0}) {}
+
 
 Mat::Mat(int rows, int cols): 
     entries(rows, vector<double>(cols, 0)), 
@@ -207,4 +213,31 @@ Vec Mat::to_vector() const {
     vector<double> vals(rows);
     for (int i = 0; i < rows; i++) vals[i] = entries[i][0];
     return Vec(vals);
+}
+
+void to_json(nlohmann::json& j, const Mat& m) {
+    // Map your custom Mat properties here
+    j = nlohmann::json{ {"entries", m.entries} };
+}
+
+
+//REVIEW
+
+/*
+  How from_json function works:
+  
+  1. The library creates a blank object using your default constructor first.
+  2. This function then extracts values out of the JSON using the exact same keys from to_json().
+  3. You must manually assign those values to your object variables to overwrite the blank slate.
+  4. Keep this as a regular free function outside the class so the library can find it.
+  5. The library handles standard structures like std::vector or std::pair automatically, but it cascades down to this function whenever it hits your custom type.
+  6. If a key is missing or misspelled inside j.at(), the program will throw a runtime out_of_range exception and crash.
+*/
+
+void from_json(const nlohmann::json& j, Mat& m) {
+    // 1. Get the entries vector from JSON
+    auto ent = j.at("entries").get<std::vector<std::vector<double>>>();
+    
+    // 2. Pass it to your implicit constructor which automatically sets rows, cols, and dim
+    m = Mat(ent); 
 }

@@ -1,5 +1,8 @@
 #include <vector>
 #include <utility>
+
+#include <json.hpp>
+using json = nlohmann::json;
 using namespace std;
 
 struct Vec;
@@ -10,6 +13,7 @@ struct Mat {
     int cols;
     pair<int, int> dim;
     
+    Mat();
 
     Mat(int rows, int cols); //all entries 0 m x n matrix
 
@@ -50,6 +54,9 @@ struct Mat {
     Mat transpose () const; //lets compiler know that original Mat isnt edited
 
     Vec to_vector() const;
-
-    
 };
+
+void to_json(nlohmann::json& j, const Mat& m);
+
+//review
+void from_json(const nlohmann::json& j, Mat& m);

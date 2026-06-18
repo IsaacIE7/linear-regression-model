@@ -9,6 +9,10 @@
 
 #include "mnist/mnist_reader_less.hpp"
 
+#include <fstream>
+#include <json.hpp>
+using json = nlohmann::json;
+
 #include "../matvec/vec.h"
 #include "../matvec/mat.h"
 
@@ -536,8 +540,9 @@ void print_probs(NeuralNet& N, const Mat& input) {
     Mat probs = N.forward(input);
 
     for (int j = 0; j < probs.cols; j++) {
-        cout << j << ": " << probs.entries[0][j] << endl;
+        cout << j << ": " << probs.entries[0][j] * 100 << "% " << endl;
     }
+    cout << endl;
 }
 
 void draw_digit_window(NeuralNet& N) {
@@ -633,6 +638,71 @@ void draw_digit_window(NeuralNet& N) {
     CloseWindow();
 }
 
+
+// void write_trained_vals(NeuralNet& N) {
+//     ofstream f("C:/codingstuff/linearregression/trained_vals.json");
+//     if (f.is_open()) {
+//         pair<vector<Mat>, vector<Vec>> data;
+//         // Use const auto& to safely bind directly to the actual layer memory
+//     for (const auto& layer : N.layers) {
+//         data.first.push_back(layer.weights);
+//         data.second.push_back(layer.bias);
+//     }
+//         // 4. Write the JSON data to the file
+//         // The argument '4' enables pretty-printing with 4 spaces of indentation
+//         json output = data;
+//         f << output.dump(4);
+//     f.flush(); // Force the OS to write the data immediately
+//     f.close();
+        
+//         // Always close your file stream
+//         f.close();
+//         std::cout << "Successfully wrote list of lists to json" << std::endl;
+//     } else {
+//         std::cerr << "Error: Could not open the file for writing." << std::endl;
+//     }
+// }
+
+void write_trained_vals(const NeuralNet& N) { 
+    // Print diagnostic info to your terminal window
+    std::cout << "[DEBUG] Network layer count: " << N.layers.size() << std::endl;
+
+    ofstream f("C:/codingstuff/linearregression/trained_vals.json"); 
+    if (f.is_open()) { 
+        pair<vector<Mat>, vector<Vec>> data; 
+        for (size_t i = 0; i < N.layers.size(); i++) { 
+            data.first.push_back(N.layers[i].weights); 
+            data.second.push_back(N.layers[i].bias); 
+        } 
+
+        std::cout << "[DEBUG] Copied " << data.first.size() << " weight matrices." << std::endl;
+
+        json output = data; 
+        
+        // Convert to string to see if the string representation is empty
+        std::string serialized_text = output.dump(4);
+        std::cout << "[DEBUG] Character size to write: " << serialized_text.length() << std::endl;
+
+        f << serialized_text; 
+        f.close(); 
+        std::cout << "Successfully wrote data to file." << std::endl; 
+    } else { 
+        std::cerr << "Error: Could not open the file path for writing." << std::endl; 
+    } 
+}
+
+
+pair<vector<Mat>, vector<Vec>> parse_trained_vals() {
+    ifstream f("C:/codingstuff/linearregression/trained_vals.json");
+    json data = json::parse(f);
+    
+
+    //library feature that converts the data into what was written to the file
+    pair<vector<Mat>, vector<Vec>> trained_vals = data.get<pair<vector<Mat>, vector<Vec>>>(); 
+
+    return trained_vals;
+}
+
 //END OF UTILS
 
 
@@ -702,19 +772,33 @@ void draw_digit_window(NeuralNet& N) {
 int main() {
     try {
         srand(0);
-
-        auto dataset = mnist::read_dataset<uint8_t, uint8_t>();
+    
         NeuralNet N({784, 64, 10});
-        auto data = convert_data(dataset, 5000);
-
-        Mat X_data = data.first;
-        Mat y_data = data.second;
 
         
+        
+        // auto dataset = mnist::read_dataset<uint8_t, uint8_t>();
 
-        N.train(X_data, y_data, 1000, 0.1, 0.1);
+       
 
-        cout << "Train accuracy: " << N.accuracy_10(X_data, y_data) << endl;
+        // auto data = convert_data(dataset, 7500);
+
+        // Mat X_data = data.first;
+        // Mat y_data = data.second;
+
+        // N.train(X_data, y_data, 1000, 0.1, 0.05);
+
+        // cout << "Train accuracy: " << N.accuracy_10(X_data, y_data) << endl;
+
+        // write_trained_vals(N);
+
+        auto p = parse_trained_vals();
+        int i = 0;
+        for (auto a: N.layers) {
+            a.weights = p.first[i];
+            a.bias = p.second[i];
+            i++;
+        }
 
         draw_digit_window(N);
     }

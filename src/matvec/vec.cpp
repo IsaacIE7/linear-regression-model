@@ -3,9 +3,14 @@
 #include <cmath>
 #include <stdexcept>
 
+#include <json.hpp>
+using json = nlohmann::json;
+
 using namespace std;
 
 struct Mat;
+
+Vec::Vec() : dim(0) {}
 
 Vec::Vec(int dim): dim(dim), comps(vector<double>(dim, 0)) {}
 
@@ -92,5 +97,19 @@ Mat Vec::to_matrix() const {
     for (int i = 0; i < dim; i++) m.entries[i][0] = comps[i];
     return m;
 }
+
+void to_json(nlohmann::json& j, const Vec& v) {
+    // Map your custom Vec properties here
+    j = nlohmann::json{{"comps", v.comps}};
+}
+
+void from_json(const nlohmann::json& j, Vec& v) {
+    // 1. Get the components vector from JSON
+    auto comps = j.at("comps").get<std::vector<double>>();
+    
+    // 2. Pass it to your implicit constructor which sets the dimension automatically
+    v = Vec(comps); 
+}
+
 
 
