@@ -509,7 +509,7 @@ int predict_digit(NeuralNet& N, const Mat& input) {
     return bestIndex;
 }
 
-void draw_on_canvas(std::vector<double>& canvas, int row, int col, int radius = 1) {
+void draw_on_canvas(vector<double>& canvas, int row, int col, int radius = 1) {
     for (int dr = -radius; dr <= radius; dr++) {
         for (int dc = -radius; dc <= radius; dc++) {
             int r = row + dr;
@@ -518,15 +518,18 @@ void draw_on_canvas(std::vector<double>& canvas, int row, int col, int radius = 
             if (r >= 0 && r < 28 && c >= 0 && c < 28) {
                 double dist2 = dr * dr + dc * dc;
 
-                if (dist2 <= radius * radius) {
-                    canvas[r * 28 + c] = 1.0;
+                // Instead of a hard 1.0, fade the intensity based on distance from the center brush point
+                double intensity = 1.0 - (sqrt(dist2) / (radius + 1));
+                if (intensity > canvas[r * 28 + c]) {
+                    canvas[r * 28 + c] = intensity; // Smooth anti-aliased edge!
                 }
             }
         }
     }
 }
 
-Mat canvas_to_mat(const std::vector<double>& canvas) {
+
+Mat canvas_to_mat(const vector<double>& canvas) {
     Mat input(1, 784);
 
     for (int i = 0; i < 784; i++) {
@@ -584,6 +587,7 @@ void draw_digit_window(NeuralNet& N) {
         }
 
         if (IsKeyPressed(KEY_ENTER)) {
+            
             Mat input = canvas_to_mat(canvas);
             prediction = predict_digit(N, input);
             print_probs(N, input);
@@ -593,7 +597,7 @@ void draw_digit_window(NeuralNet& N) {
         ClearBackground(DARKGRAY);
 
         DrawText("Draw digit with mouse", 120, 25, 24, WHITE);
-        DrawText("ENTER = predict, C = clear", 120, 50, 20, LIGHTGRAY);
+        DrawText("ENTER = classify, C = clear", 120, 50, 20, LIGHTGRAY);
 
         // Draw canvas background
         DrawRectangle(canvasX, canvasY, canvasSize, canvasSize, BLACK);
@@ -624,7 +628,7 @@ void draw_digit_window(NeuralNet& N) {
 
         if (prediction != -1) {
             DrawText(
-                TextFormat("Prediction: %d", prediction),
+                TextFormat("Classification: %d", prediction),
                 120,
                 canvasY + canvasSize + 30,
                 32,
@@ -664,8 +668,6 @@ void draw_digit_window(NeuralNet& N) {
 // }
 
 void write_trained_vals(const NeuralNet& N) { 
-    // Print diagnostic info to your terminal window
-    std::cout << "[DEBUG] Network layer count: " << N.layers.size() << std::endl;
 
     ofstream f("C:/codingstuff/linearregression/trained_vals.json"); 
     if (f.is_open()) { 
@@ -675,15 +677,8 @@ void write_trained_vals(const NeuralNet& N) {
             data.second.push_back(N.layers[i].bias); 
         } 
 
-        std::cout << "[DEBUG] Copied " << data.first.size() << " weight matrices." << std::endl;
-
         json output = data; 
         
-        // Convert to string to see if the string representation is empty
-        std::string serialized_text = output.dump(4);
-        std::cout << "[DEBUG] Character size to write: " << serialized_text.length() << std::endl;
-
-        f << serialized_text; 
         f.close(); 
         std::cout << "Successfully wrote data to file." << std::endl; 
     } else { 
@@ -821,21 +816,6 @@ int main() {
 //     // auto data = convert_data(dataset, 200);
 //     // Mat X = data.first;
 //     // Mat Y = data.second;
-
-//     // cout << "X rows, cols = " << X.rows << " x " << X.cols << endl;
-//     // cout << "Y rows, cols = " << Y.rows << " x " << Y.cols << endl;
-
-//     // cout << "first image: ";
-//     // for (int i = 0; i < 28; i++) {
-//     //      cout << X.entries[0][i + 300] << " ";
-//     // }
-
-//     // cout << endl;
-
-//     // cout  <<  "first label: ";
-//     // for (int i = 0; i < Y.entries[0].size(); i++) {
-//     //     cout << Y.entries[0][i] << " ";
-//     // }
 
 //     vector<vector<double>> entries = {{2, 1, 10, 6}};
 //     Mat X = entries;
