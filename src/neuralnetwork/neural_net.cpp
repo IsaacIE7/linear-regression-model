@@ -579,7 +579,7 @@ void draw_digit_window(NeuralNet& N) {
         }
 
         if (IsKeyPressed(KEY_C)) {
-            std::fill(canvas.begin(), canvas.end(), 0.0);
+            fill(canvas.begin(), canvas.end(), 0.0);
             prediction = -1;
         }
 
@@ -703,6 +703,8 @@ pair<vector<Mat>, vector<Vec>> parse_trained_vals() {
     return trained_vals;
 }
 
+
+
 //END OF UTILS
 
 
@@ -777,18 +779,18 @@ int main() {
 
         
         
-        // auto dataset = mnist::read_dataset<uint8_t, uint8_t>();
+        auto dataset = mnist::read_dataset<uint8_t, uint8_t>();
 
        
 
-        // auto data = convert_data(dataset, 7500);
+        auto data = convert_data(dataset, 7500);
 
-        // Mat X_data = data.first;
-        // Mat y_data = data.second;
+        Mat X_data = data.first;
+        Mat y_data = data.second;
 
         // N.train(X_data, y_data, 1000, 0.1, 0.05);
 
-        // cout << "Train accuracy: " << N.accuracy_10(X_data, y_data) << endl;
+        cout << "Train accuracy: " << N.accuracy_10(X_data, y_data) * 100 << "%" << endl;
 
         // write_trained_vals(N);
 
