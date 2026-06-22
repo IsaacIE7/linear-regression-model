@@ -112,10 +112,15 @@ Vec Mat::col_vec(int col) const {
 
 Mat Mat::operator*(const Mat& m) const {
 
-    if (cols != m.rows)  {  cout << "rows: " << rows << " cols: " << cols << endl;
-    cout << "m.rows: " << m.rows << " m.cols: " << m.cols << endl; throw invalid_argument("mat * mat, matrix dimension incompatibility");
-}Mat res(rows, m.cols);
-  
+    if (cols != m.rows)  {  
+        cout << "rows: " << rows << " cols: " << cols << endl;
+        cout << "m.rows: " << m.rows << " m.cols: " << m.cols << endl; 
+        throw invalid_argument("mat * mat, matrix dimension incompatibility");
+    }
+
+    Mat res(rows, m.cols);
+    
+    #pragma omp parallel for
     for (int j = 0; j < m.cols; j++) {
         for (int i = 0; i < rows; i++) { 
             double sum = 0;
@@ -214,6 +219,17 @@ Vec Mat::to_vector() const {
     for (int i = 0; i < rows; i++) vals[i] = entries[i][0];
     return Vec(vals);
 }
+
+Mat get_batch_slice(const Mat& original, int start_row, int batch_size) {
+    Mat res(batch_size, original.cols);
+    for (int i = 0; i < batch_size; i++) {
+        for (int j = 0; j < res.cols; j++) {
+            res.entries[i][j] = original.entries[start_row + i][j];
+        }
+    }
+    return res;
+}
+
 
 void to_json(nlohmann::json& j, const Mat& m) {
     // Map your custom Mat properties here

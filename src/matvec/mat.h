@@ -56,6 +56,9 @@ struct Mat {
     Vec to_vector() const;
 };
 
+//util
+Mat get_batch_slice(const Mat& original, int start_row, int batch_size);
+
 void to_json(nlohmann::json& j, const Mat& m);
 
 //review

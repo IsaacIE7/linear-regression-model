@@ -62,3 +62,13 @@ add_custom_command(TARGET neural_network POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_SOURCE_DIR}/mnist/t10k-images-idx3-ubyte $<TARGET_FILE_DIR:neural_network>/mnist/t10k-images-idx3-ubyte 
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_SOURCE_DIR}/mnist/t10k-labels-idx1-ubyte $<TARGET_FILE_DIR:neural_network>/mnist/t10k-labels-idx1-ubyte 
 )
+
+if (MSVC)
+    target_compile_options(neural_network PRIVATE /O2 /arch:AVX2)
+endif()
+
+find_package(OpenMP)
+
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(neural_network PRIVATE OpenMP::OpenMP_CXX)
+endif()

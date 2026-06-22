@@ -139,7 +139,7 @@ struct NeuralNet {
         return activations.back();
     }
 
-    double loss(const Mat& y) {
+    double loss(const Mat& y) { //binary cross entropy
         Mat p = activations.back();
 
         Mat m1 = y.multiply_element_wise(p.log_element_wise());
@@ -149,6 +149,15 @@ struct NeuralNet {
 
         return (res * (1.0 / (y.rows * y.cols))).sum_entries(); 
     }
+
+    // //categorical cross entropy
+    // double loss(const Mat& y) { 
+    //     Mat p = activations.back();
+
+    //     Mat m1 = y.multiply_element_wise(p.log_element_wise());
+    
+    //     return ((m1  * -1) * (1.0 / (y.rows))).sum_entries(); 
+    // }
 
     void backprop(const Mat& y) {
         gradWeights.clear();
@@ -214,6 +223,36 @@ struct NeuralNet {
         }
     }
 
+    // void train(const Mat& data, const Mat& y, int epochs, double learning_rate, double tolerance, int batch_size) {
+    //     forward(data);
+    //     double current_loss = loss(y);
+    //     int i = 0;
+
+    //     while (i < epochs && current_loss) {
+    //         for (int start_row = 0; start_row < data.rows - batch_size; start_row += batch_size) {
+    //             Mat batch = get_batch_slice(data, start_row, batch_size);
+    //             Mat ybatch = get_batch_slice(y, start_row, batch_size);
+
+    //             forward(batch);
+                
+
+    //             backprop(ybatch);
+    //             update(learning_rate);
+    //         }  
+    //         if (i % 100 == 0) {
+    //             cout << "iteration " << i
+    //              << " Loss: " << current_loss
+    //              << " Accuracy: " << accuracy_10(data, y)
+    //              << endl;
+    //         }
+    //         forward(data);
+    //         current_loss = loss(y);
+            
+    //         i++;
+
+    //     }
+    // }
+
     void train(const Mat& data, const Mat& y, int epochs, double learning_rate, double tolerance) {
         forward(data);
         double current_loss = loss(y);
@@ -223,11 +262,9 @@ struct NeuralNet {
             forward(data);
             current_loss = loss(y);
 
-            if (i % 100 == 0) {
-            cout << "iteration " << i
-                 << " Loss: " << current_loss
-                 << " Accuracy: " << accuracy_binary(data, y)
-                 << endl;
+            if (i % 50 == 0) {
+            cout << "iteration " << i << " Loss: " << current_loss 
+            << " Accuracy: " << accuracy_10(data, y) * 100 << "% " << endl;
             }
 
             backprop(y);
@@ -347,7 +384,7 @@ struct NeuralNet {
                     matchingentries++;
                 }
             }
-            if (matchingentries == 10) imagecorrect++;
+            if (matchingentries == pred.cols) imagecorrect++;
         }
 
         return (double)imagecorrect / total;
@@ -407,7 +444,7 @@ pair<Mat, Mat> convert_data(const mnist::MNIST_dataset<uint8_t, uint8_t>& datase
     
     int count = 0;
 
-    for (int i = 0; i < num_samples && i < training_labels.size(); i++) {
+    for (int i = 0 ; i < num_samples && i < training_labels.size(); i++) {
         for (int j = 0; j < training_images[0].size(); j++) {
                  X.entries[i][j] = training_images[i][j] / 255.0; 
         }    
@@ -667,9 +704,9 @@ void draw_digit_window(NeuralNet& N) {
 //     }
 // }
 
-void write_trained_vals(const NeuralNet& N) { 
+void write_trained_vals(const NeuralNet& N, string filepath) { 
 
-    ofstream f("C:/codingstuff/linearregression/trained_vals.json"); 
+    ofstream f(filepath); 
     if (f.is_open()) { 
         pair<vector<Mat>, vector<Vec>> data; 
         for (size_t i = 0; i < N.layers.size(); i++) { 
@@ -678,7 +715,9 @@ void write_trained_vals(const NeuralNet& N) {
         } 
 
         json output = data; 
-        
+        f << output.dump(4);//4 is pretty printing
+        f.flush();
+
         f.close(); 
         std::cout << "Successfully wrote data to file." << std::endl; 
     } else { 
@@ -687,8 +726,8 @@ void write_trained_vals(const NeuralNet& N) {
 }
 
 
-pair<vector<Mat>, vector<Vec>> parse_trained_vals() {
-    ifstream f("C:/codingstuff/linearregression/trained_vals.json");
+pair<vector<Mat>, vector<Vec>> parse_trained_vals(string filepath) {
+    ifstream f(filepath);
     json data = json::parse(f);
     
 
@@ -706,7 +745,7 @@ pair<vector<Mat>, vector<Vec>> parse_trained_vals() {
 // int main() {
 //     try {
 
-// std::vector<double> mnist_flattened_1_255 = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 180.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 180.0, 255.0, 255.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 180.0, 255.0, 255.0, 180.0, 255.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 180.0, 255.0, 255.0, 180.0, 0.0, 0.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 255.0, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 180.0, 255.0, 255.0, 255.0, 255.0, 255.0, 255.0, 180.0, 80.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 80.0, 180.0, 255.0, 255.0, 255.0, 255.0, 255.0, 255.0, 180.0, 80.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
+// //std::vector<double> mnist_flattened_1_255; 
 
 //         auto dataset = mnist::read_dataset<uint8_t, uint8_t>();
 
@@ -714,7 +753,7 @@ pair<vector<Mat>, vector<Vec>> parse_trained_vals() {
 //         Mat X_train = train.first;
 //         Mat y_train = train.second;
 
-//         NeuralNet N({784, 32, 10});
+//         NeuralNet N({784, 64, 32, 10});
 
 //         cout << "Before training:" << endl;
 //         N.forward(X_train);
@@ -722,7 +761,7 @@ pair<vector<Mat>, vector<Vec>> parse_trained_vals() {
 //         cout << "Accuracy: " << N.accuracy_10(X_train, y_train) << endl;
 
 //         cout << "\nTraining..." << endl;
-//         N.train(X_train, y_train, 1000, 0.1, 0.15);
+//         //N.train(X_train, y_train, 1000, 0.1, 0.15);
 
 //         cout << "\nAfter training:" << endl;
 //         N.forward(X_train);
@@ -730,33 +769,33 @@ pair<vector<Mat>, vector<Vec>> parse_trained_vals() {
 //         cout << "Accuracy: " << N.accuracy_10(X_train, y_train) << endl;
 
         
-//         Mat X(1, mnist_flattened_1_255.size()); 
-//         X.entries = {{mnist_flattened_1_255}};
+//         // Mat X(1, mnist_flattened_1_255.size()); 
+//         // X.entries = {{mnist_flattened_1_255}};
 
-//         cout << "data set rows: " << X.rows << " cols: " << X.cols << endl;
-//         auto p = N.forward(X);
-//         cout << "data set rows: " << p.rows << " cols: " << p.cols << endl << endl;
+//         // cout << "data set rows: " << X.rows << " cols: " << X.cols << endl;
+//         // auto p = N.forward(X);
+//         // cout << "data set rows: " << p.rows << " cols: " << p.cols << endl << endl;
 
-//         Mat P = N.predict_softargmax(X);
+//         // Mat P = N.predict_softargmax(X);
 
-//         Mat P2 = N.forward(X);
+//         // Mat P2 = N.forward(X);
 
-//         for (auto d: P.entries) {
-//             for (double m: d) {
-//                 cout << m << " ";
-//             }
-//         }
+//         // for (auto d: P.entries) {
+//         //     for (double m: d) {
+//         //         cout << m << " ";
+//         //     }
+//         // }
 
-//         cout << endl << endl;
+//         // cout << endl << endl;
 
-//         int i = 0;
-//         for (auto d: P2.entries) {
-//             for (double m: d) {
-//                 cout << "'" << i << "': " <<  m * 100 << "% ";
-//             }
-//         }
+//         // int i = 0;
+//         // for (auto d: P2.entries) {
+//         //     for (double m: d) {
+//         //         cout << "'" << i << "': " <<  m * 100 << "% ";
+//         //     }
+//         // }
 
-//         cout << endl << endl << "Digit classification: " << N.predict_softargmax_classify_num(X);
+//         // cout << endl << endl << "Digit classification: " << N.predict_softargmax_classify_num(X);
 
 //     }
 //     catch (const exception& e) {
@@ -771,31 +810,32 @@ int main() {
         srand(0);
     
         NeuralNet N({784, 64, 10});
-
         
         
         auto dataset = mnist::read_dataset<uint8_t, uint8_t>();
 
        
 
-        auto data = convert_data(dataset, 7500);
+        auto data = convert_data(dataset, 10000);
 
         Mat X_data = data.first;
         Mat y_data = data.second;
 
-        // N.train(X_data, y_data, 1000, 0.1, 0.05);
-
-        cout << "Train accuracy: " << N.accuracy_10(X_data, y_data) * 100 << "%" << endl;
-
-        // write_trained_vals(N);
-
-        auto p = parse_trained_vals();
+        auto p = parse_trained_vals("C:/codingstuff/linearregression/weights.json");
         int i = 0;
-        for (auto a: N.layers) {
+        for (auto& a: N.layers) {
             a.weights = p.first[i];
             a.bias = p.second[i];
             i++;
         }
+
+        //N.train(X_data, y_data, 200, 3, 0.01);
+
+        cout << "Train accuracy: " << N.accuracy_10(X_data, y_data) * 100 << "%" << endl;
+
+        //write_trained_vals(N, "C:/codingstuff/linearregression/weights.json");
+
+        
 
         draw_digit_window(N);
     }

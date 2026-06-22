@@ -2,10 +2,10 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "RelWithDebInfo/neural_network.exe"
+			"path" : "Release/neural_network.exe"
 		},
 		{
-			"path" : "RelWithDebInfo/neural_network.pdb"
+			"path" : "Release/neural_network.pdb"
 		}
 	],
 	"backtrace" : 1,
@@ -15,6 +15,7 @@
 		[
 			"add_executable",
 			"target_link_libraries",
+			"target_compile_options",
 			"target_compile_definitions",
 			"target_include_directories"
 		],
@@ -42,11 +43,23 @@
 			{
 				"command" : 2,
 				"file" : 0,
-				"line" : 56,
+				"line" : 67,
+				"parent" : 0
+			},
+			{
+				"command" : 1,
+				"file" : 0,
+				"line" : 73,
 				"parent" : 0
 			},
 			{
 				"command" : 3,
+				"file" : 0,
+				"line" : 56,
+				"parent" : 0
+			},
+			{
+				"command" : 4,
 				"file" : 0,
 				"line" : 38,
 				"parent" : 0
@@ -59,28 +72,40 @@
 			"compileCommandFragments" : 
 			[
 				{
-					"fragment" : "/DWIN32 /D_WINDOWS /EHsc /Zi /O2 /Ob1 /DNDEBUG -std:c++17 -MD"
+					"fragment" : "/DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD"
+				},
+				{
+					"backtrace" : 3,
+					"fragment" : "/O2"
+				},
+				{
+					"backtrace" : 3,
+					"fragment" : "/arch:AVX2"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-openmp"
 				}
 			],
 			"defines" : 
 			[
 				{
-					"backtrace" : 3,
+					"backtrace" : 5,
 					"define" : "MNIST_DATA_LOCATION=\"C:/codingstuff/linearregression/data/\""
 				}
 			],
 			"includes" : 
 			[
 				{
-					"backtrace" : 4,
+					"backtrace" : 6,
 					"path" : "C:/codingstuff/linearregression/src/matvec/include"
 				},
 				{
-					"backtrace" : 4,
+					"backtrace" : 6,
 					"path" : "C:/codingstuff/linearregression"
 				},
 				{
-					"backtrace" : 4,
+					"backtrace" : 6,
 					"path" : "C:/codingstuff/linearregression/raylib/include"
 				}
 			],
@@ -113,11 +138,11 @@
 		"commandFragments" : 
 		[
 			{
-				"fragment" : "/DWIN32 /D_WINDOWS /EHsc /Zi /O2 /Ob1 /DNDEBUG -MD",
+				"fragment" : "/DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -MD",
 				"role" : "flags"
 			},
 			{
-				"fragment" : "/machine:X86 /debug /INCREMENTAL",
+				"fragment" : "/machine:X86 /INCREMENTAL:NO",
 				"role" : "flags"
 			},
 			{
