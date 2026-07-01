@@ -524,7 +524,7 @@ void display(vector<int> layout) {
         // DrawText("FPS: 60", 20, 15, 20, GREEN); 
         EndDrawing(); 
     } 
-
+    
     CloseWindow(); 
 }
 
@@ -563,6 +563,55 @@ void draw_on_canvas(vector<double>& canvas, int row, int col, int radius = 1) {
             }
         }
     }
+}
+
+void center_canvas(vector<double>& canvas) {
+    double centerx;
+    double centery;
+
+    double totalM = 0;
+    double xsum = 0;
+    double ysum = 0;
+
+
+    for (double& d: canvas) {
+        totalM += d;
+    }
+
+    if (totalM == 0) return;
+
+    for (int r = 0; r < 28; r++) {
+        double rowsum = 0;
+        for (int c = 0; c < 28; c++) {
+            rowsum += canvas[r * 28 + c] * c;
+        }
+        xsum += rowsum;
+    }
+    centerx = round(xsum / (totalM));
+
+    for (int c = 0; c < 28; c++) {
+        double colsum = 0;
+        for (int r = 0; r < 28; r++) {
+            colsum += canvas[r * 28 + c] * r;
+        }
+        ysum += colsum;
+    }
+    centery = round(ysum / (totalM));
+
+    int xshift = 14 - centerx;
+    int yshift = 14 - centery;
+
+    vector<double> centered(784);
+
+    for (int r = 0; r < 28; r++) {
+        for (int c = 0; c < 28; c++) {
+            if (r + yshift < 28 && r + yshift >= 0 && c + xshift < 28 && c + xshift >= 0) {
+                centered[(r + yshift) * 28 + c + xshift] = canvas[r * 28 + c];
+            }
+        }
+    }
+
+    canvas = centered;
 }
 
 
@@ -624,7 +673,7 @@ void draw_digit_window(NeuralNet& N) {
         }
 
         if (IsKeyPressed(KEY_ENTER)) {
-            
+            center_canvas(canvas);
             Mat input = canvas_to_mat(canvas);
             prediction = predict_digit(N, input);
             print_probs(N, input);
@@ -635,6 +684,14 @@ void draw_digit_window(NeuralNet& N) {
 
         DrawText("Draw digit with mouse", 120, 25, 24, WHITE);
         DrawText("ENTER = classify, C = clear", 120, 50, 20, LIGHTGRAY);
+
+        DrawText(
+                "Classification:",
+                120,
+                canvasY + canvasSize + 30,
+                32,
+                GREEN
+            );
 
         // Draw canvas background
         DrawRectangle(canvasX, canvasY, canvasSize, canvasSize, BLACK);
@@ -679,30 +736,6 @@ void draw_digit_window(NeuralNet& N) {
     CloseWindow();
 }
 
-
-// void write_trained_vals(NeuralNet& N) {
-//     ofstream f("C:/codingstuff/linearregression/trained_vals.json");
-//     if (f.is_open()) {
-//         pair<vector<Mat>, vector<Vec>> data;
-//         // Use const auto& to safely bind directly to the actual layer memory
-//     for (const auto& layer : N.layers) {
-//         data.first.push_back(layer.weights);
-//         data.second.push_back(layer.bias);
-//     }
-//         // 4. Write the JSON data to the file
-//         // The argument '4' enables pretty-printing with 4 spaces of indentation
-//         json output = data;
-//         f << output.dump(4);
-//     f.flush(); // Force the OS to write the data immediately
-//     f.close();
-        
-//         // Always close your file stream
-//         f.close();
-//         std::cout << "Successfully wrote list of lists to json" << std::endl;
-//     } else {
-//         std::cerr << "Error: Could not open the file for writing." << std::endl;
-//     }
-// }
 
 void write_trained_vals(const NeuralNet& N, string filepath) { 
 
